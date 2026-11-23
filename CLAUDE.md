@@ -32,7 +32,7 @@ Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's fe
 1. Scaffold + PWA + routing + layout + deploy  ← done
 2. Data layer (Dexie schema, typed repos, export/import)  ← done
 3. Setup screens + onboarding  ← done (onboarding's “first goal” step comes with step 5)
-4. Free-slot builder (pure) + tests
+4. Free-slot builder (pure) + tests  ← done
 5. Goals CRUD
 6. Planner v1 (pure) + tests
 7. Today / Week / Month views
@@ -74,3 +74,11 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - Setup sections are defined once in `screens/setup/sections.tsx` and reused by Settings and onboarding (`ONBOARDING_ORDER` follows SPEC §5).
 - Inputs use native iOS controls (`type="time"`, `type="date"`, `inputMode` numeric) at ≥16px font so Safari doesn't zoom.
 - First-run redirect to onboarding is decided once at launch in `App.tsx` (not reactively — that caused a bounce-back bug).
+
+## Free-slot builder (src/domain/freeSlots.ts)
+
+- `buildDay(input, date)` / `buildDays(input, from, count)` → `DayLayout { blocks, free, freeMinutes, warnings }`. Times are minutes since midnight, half-open `[start, end)`; interval maths is in `ranges.ts`.
+- Order: fixed program (never moved) → meals (earliest spot in window that doesn't make travel worse) → travel between consecutive located items (day starts/ends at Home; travel *to* something is as late as possible, travel home is right after) → free = availability (template + overrides) − sleep − blocks − goal-independent rules, minus `bufferMin` only where a slot touches a fixed/meal/travel block.
+- Each free slot carries its `energy` and `locationId` (where you are then) for the planner's scoring and "goals pull travel with them".
+- Category-specific rules (`noGoalAfter`/`noGoalBefore` with a category) are NOT applied here — the planner (step 6) applies them per goal.
+- Problems become `warnings` with user-facing messages (overlapping fixed blocks, meal doesn't fit, missing/too-tight travel); impossible travel is still shown as a block.
