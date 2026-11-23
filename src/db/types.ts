@@ -253,3 +253,6 @@ export interface Meta {
   key: string
   value: string
 }
+
+/** `Omit<T, 'id'>` that also works on union types (e.g. Rule): the shape of a row before it's saved. */
+export type NewRow<T> = T extends unknown ? Omit<T, 'id'> : never

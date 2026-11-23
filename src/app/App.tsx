@@ -1,40 +1,77 @@
-import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Navigate, NavLink, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { NAV_ITEMS, TAB_BAR_PATHS } from './routes'
 import { Placeholder } from '../screens/Placeholder'
 import { SettingsScreen } from '../screens/SettingsScreen'
+import { SettingsSectionPage } from '../screens/setup/SettingsSectionPage'
+import { FixedBlockEditScreen } from '../screens/setup/FixedBlockEditScreen'
+import { Onboarding } from '../screens/onboarding/Onboarding'
+import { useSettings } from '../ui/form'
 
-export function App() {
+/** Main layout: sidebar (landscape) / tab bar (portrait). */
+function Shell() {
   return (
     <div className="shell">
       <nav className="sidebar" aria-label="Main">
         <div className="brand">Agenda</div>
         {NAV_ITEMS.map((item) => (
           <NavLink key={item.path} to={item.path} className="nav-link">
-            <span className="nav-icon" aria-hidden>{item.icon}</span>
+            <span className="nav-icon" aria-hidden>
+              {item.icon}
+            </span>
             <span>{item.label}</span>
           </NavLink>
         ))}
       </nav>
 
       <main className="main">
-        <Routes>
-          <Route path="/" element={<Navigate to="/today" replace />} />
-          {NAV_ITEMS.filter((i) => i.path !== '/settings').map((item) => (
-            <Route key={item.path} path={item.path} element={<Placeholder title={item.label} />} />
-          ))}
-          <Route path="/settings" element={<SettingsScreen />} />
-          <Route path="*" element={<Navigate to="/today" replace />} />
-        </Routes>
+        <Outlet />
       </main>
 
       <nav className="tabbar" aria-label="Tabs">
         {NAV_ITEMS.filter((i) => TAB_BAR_PATHS.includes(i.path)).map((item) => (
           <NavLink key={item.path} to={item.path} className="tab-link">
-            <span className="nav-icon" aria-hidden>{item.icon}</span>
+            <span className="nav-icon" aria-hidden>
+              {item.icon}
+            </span>
             <span className="tab-label">{item.label}</span>
           </NavLink>
         ))}
       </nav>
     </div>
+  )
+}
+
+export function App() {
+  const settings = useSettings()
+  const { pathname } = useLocation()
+  // First-run setup is decided once, at launch. Re-checking on every render would bounce
+  // "Go to Today"/"Skip" back into onboarding before the settings save is visible.
+  const [launch, setLaunch] = useState<'pending' | 'redirect' | 'done'>('pending')
+  const inOnboarding = pathname.startsWith('/onboarding')
+
+  useEffect(() => {
+    if (launch === 'pending' && settings) setLaunch(!settings.onboardingDone && !inOnboarding ? 'redirect' : 'done')
+    else if (launch === 'redirect' && inOnboarding) setLaunch('done')
+  }, [launch, settings, inOnboarding])
+
+  if (launch === 'pending') return null // first IndexedDB read takes a few ms
+  if (launch === 'redirect' && !inOnboarding) return <Navigate to="/onboarding/welcome" replace />
+
+  return (
+    <Routes>
+      <Route path="/onboarding/fixed/:id" element={<div className="onboarding"><FixedBlockEditScreen /></div>} />
+      <Route path="/onboarding/:step?" element={<Onboarding />} />
+      <Route element={<Shell />}>
+        <Route path="/" element={<Navigate to="/today" replace />} />
+        {NAV_ITEMS.filter((i) => i.path !== '/settings').map((item) => (
+          <Route key={item.path} path={item.path} element={<Placeholder title={item.label} />} />
+        ))}
+        <Route path="/settings" element={<SettingsScreen />} />
+        <Route path="/settings/fixed/:id" element={<FixedBlockEditScreen />} />
+        <Route path="/settings/:section" element={<SettingsSectionPage />} />
+        <Route path="*" element={<Navigate to="/today" replace />} />
+      </Route>
+    </Routes>
   )
 }
