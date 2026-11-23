@@ -40,7 +40,7 @@ Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's fe
 9. Focus Mode (timestamp timer) + tests  ← done
 10. Topics & spaced review + tests  ← done
 11. Progress & streaks  ← done
-12. Activity log, check-in, backlog lists
+12. Activity log, check-in, backlog lists  ← done
 13. Learning from the log
 14. Weekly review
 15. Apple Calendar `.ics` export
@@ -138,3 +138,9 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - `streak`: weekly (recurring, ongoing per week) or daily (ongoing/book per day). Periods with nothing planned are neutral; the current period is neutral until met; the target is capped by what was planned in that period.
 - Books: `logPages` keeps a per-day `pageLog` (also from the book session's note prompt); pace = pages since the earliest entry in the last 14 days ÷ days to today; finish date and on-track vs the target date.
 - `/goals/:id` detail: progress card by type, streak, stats (total time, completion rate, this week), `WeeklyChart` (dataviz specs: ≤24px columns, 4px rounded tops, hairline grid, tap/focus tooltip — on touch only a mouse hides it on leave, table view; bar colour = goal colour 85% + black in light, 70% + white in dark, validated ≥ 3:1), topics, notes. Cards show a compact bar/badge/streak.
+
+## Activity log, check-in, backlog (src/domain/log.ts, src/screens/log, src/screens/lists)
+
+- A `LogEntry` linked to a goal counts toward it WITHOUT becoming a session (no time slot): `loggedMinutes` is added in the planner's `committedMinutes` (deadline remaining, ongoing per-day/week) and in progress (deadline done, streaks, weekly history, total); for recurring goals an entry with minutes counts as one session that week and its day needs rest after. `PlanState.logs`; logs are a plan input (signature + `loadPlanState`). Adding an entry with pages to a book goal moves `pagesDone` (via `logPages`) — editing/deleting doesn't revert pages.
+- Check-in: one per day (`checkIns` keyed by date). `shouldPromptCheckIn`: Today shows "How was today?" once the last non-travel item of the day ended (or from 20:00 with nothing planned); "Not now" sets meta `checkInDismissed:<date>`. Also on the Log screen.
+- Backlog: `finishBacklogItem` → status finished + rating + note and a `LogEntry` ("watched"/"read", note "★★★★☆ — …"). Books in Want to read: "Make it a book goal" → `/goals/new?template=book&name=…` (GoalEditScreen reads `name`) and the item goes in progress. Links must be http(s) and open with `rel="noopener noreferrer"`.

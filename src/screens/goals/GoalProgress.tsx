@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/db'
-import type { Goal, Session } from '../../db/types'
+import type { Goal, LogEntry, Session } from '../../db/types'
 import type { PlanWarning } from '../../domain/planner'
 import { deadlineProgress, streak, type DeadlineProgress, type Streak } from '../../domain/progress'
 import { formatDuration } from '../../domain/time'
@@ -54,10 +54,10 @@ export function StreakChip({ s }: { s: Streak }) {
 }
 
 /** Compact progress line for goal cards. */
-export function CardProgress({ goal, sessions, today }: { goal: Goal; sessions: readonly Session[]; today: string }) {
+export function CardProgress({ goal, sessions, today, logs }: { goal: Goal; sessions: readonly Session[]; today: string; logs?: readonly LogEntry[] }) {
   const shortfall = useShortfall(goal.id)
   if (goal.type === 'deadline') {
-    const p = deadlineProgress(goal, sessions, today, shortfall)
+    const p = deadlineProgress(goal, sessions, today, shortfall, logs)
     return (
       <span className="card-progress">
         <ProgressBar ratio={p.ratio} label={`${goal.name}: ${Math.round(p.ratio * 100)}% of the hours done`} />
@@ -75,13 +75,13 @@ export function CardProgress({ goal, sessions, today }: { goal: Goal; sessions: 
         <ProgressBar ratio={ratio} label={`${goal.name}: page ${goal.pagesDone ?? 0} of ${goal.totalPages}`} />
         <span className="muted small">{Math.round(ratio * 100)}% read</span>
         {(() => {
-          const s = streak(goal, sessions, today)
+          const s = streak(goal, sessions, today, logs)
           return s ? <StreakChip s={s} /> : null
         })()}
       </span>
     )
   }
-  const s = streak(goal, sessions, today)
+  const s = streak(goal, sessions, today, logs)
   return s ? (
     <span className="card-progress">
       <StreakChip s={s} />

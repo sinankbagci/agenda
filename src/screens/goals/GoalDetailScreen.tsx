@@ -22,6 +22,7 @@ export function GoalDetailScreen() {
   const today = format(useNow(), 'yyyy-MM-dd')
   const goal = useLiveQuery(() => repos.goals.get(id).then((g) => g ?? null), [id])
   const sessions = useLiveQuery(() => db.sessions.where('goalId').equals(id).toArray(), [id], [])
+  const logs = useLiveQuery(() => repos.logEntries.byGoal(id), [id], [])
   const shortfall = useShortfall(id)
 
   if (goal === undefined) return null
@@ -35,9 +36,9 @@ export function GoalDetailScreen() {
       </section>
     )
 
-  const invested = totalInvested(goal.id, sessions)
+  const invested = totalInvested(goal.id, sessions, logs)
   const rate = completionRate(goal.id, sessions, today)
-  const history = weeklyHistory(goal.id, sessions, today, 12)
+  const history = weeklyHistory(goal.id, sessions, today, 12, logs)
   const thisWeek = history.at(-1)?.minutes ?? 0
 
   return (
@@ -78,10 +79,10 @@ export function GoalDetailScreen() {
       </div>
 
       {/* ---- progress by type ---- */}
-      {goal.type === 'deadline' && <DeadlineCard p={deadlineProgress(goal, sessions, today, shortfall)} deadline={goal.deadline} />}
+      {goal.type === 'deadline' && <DeadlineCard p={deadlineProgress(goal, sessions, today, shortfall, logs)} deadline={goal.deadline} />}
       {goal.type === 'book' && <BookCard goalId={goal.id} today={today} />}
       {(() => {
-        const s = streak(goal, sessions, today)
+        const s = streak(goal, sessions, today, logs)
         return s ? (
           <div className="card detail-card">
             <StreakChip s={s} />
