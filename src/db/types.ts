@@ -183,6 +183,8 @@ export interface Session {
   frozen: boolean
   /** Placed by the user at a chosen time ("+ Add" → Goal session). Always also frozen. */
   pinned?: boolean
+  /** A short spaced review of one topic after it was marked done (kind 'review', topicIds = [topic]). */
+  spacedReview?: boolean
   /** Display label for meals ("Lunch"); goal sessions use the goal's name. */
   label?: string
   mealId?: string

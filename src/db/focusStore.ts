@@ -42,6 +42,9 @@ export async function startFocus(args: { goalId: string; sessionId?: string; now
     const config = resolveConfig(goal, await r.settings.get())
     const todays = await r.sessions.byDate(day(args.now))
     const timer = startTimer({ goalId: goal.id, config, now: args.now, sessionId: args.sessionId, targets: pickTargets(goal.id, todays, args.sessionId) })
+    // the topic being worked on: the session's first topic (Focus intervals record it)
+    const fromSession = todays.find((s) => s.id === args.sessionId) ?? todays.find((s) => s.id === timer.targets[0]?.id)
+    if (fromSession?.topicIds?.[0]) timer.topicId = fromSession.topicIds[0]
     await db.activeTimer.put(timer)
     return timer
   })

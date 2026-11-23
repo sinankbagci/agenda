@@ -17,10 +17,11 @@
  * around its session ("goals pull travel with them").
  */
 import { addDays, differenceInCalendarDays, format, parseISO, startOfWeek } from 'date-fns'
-import type { Goal, ISODate, Rule, Session, Settings } from '../db/types'
+import type { Goal, ISODate, Rule, Session, Settings, Topic } from '../db/types'
 import { buildDay, makeTravel, type DayLayout, type FreeSlot, type SlotInput } from './freeSlots'
 import { intersect, subtract, type Range } from './ranges'
 import { formatDuration, fromMinutes, toMinutes } from './time'
+import { REVIEW_MINUTES, assignTopics, finalReviewOrder, isSpacedReviewOf, reviewsHad, spacedReviewDates, workedByTopic } from './topics'
 
 // ---------- Public types ----------
 
@@ -30,6 +31,8 @@ export interface PlanState {
   goals: readonly Goal[]
   /** Every stored session (any date, any status). */
   sessions: readonly Session[]
+  /** Topics of deadline goals (SPEC 3.6). */
+  topics?: readonly Topic[]
 }
 
 export interface PlanOptions {
@@ -303,7 +306,7 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
     return undefined
   }
 
-  const commit = (day: Day, goal: Goal, p: Placement, kind: 'goal' | 'review') => {
+  const commit = (day: Day, goal: Goal, p: Placement, kind: 'goal' | 'review', extra?: Pick<Session, 'topicIds' | 'spacedReview'>) => {
     out.push({
       id: newId(day.date, kind, goal.id),
       kind,
@@ -314,6 +317,7 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
       end: fromMinutes(p.end),
       status: 'planned',
       frozen: false,
+      ...extra,
     })
     if (p.travel > 0) {
       const there = { start: p.start - p.travel, end: p.start }
@@ -367,6 +371,8 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
     boosts.set(o.date, b)
   }
 
+  const topicsOf = (goalId: string) => (state.topics ?? []).filter((t) => t.goalId === goalId)
+
   // ----- 3 + 4. deadline goals -----
   const deadlineGoals = goals.filter((g) => g.type === 'deadline' && g.deadline && g.deadline > today)
 
@@ -380,7 +386,8 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
       const alreadyKept = state.sessions.some((s) => s.goalId === g.id && s.kind === 'review' && s.date === date && isKept(s))
       if (alreadyKept) continue
       const p = bestSpotUpTo(day, g, g.maxSession, g.minSession)
-      if (p) commit(day, g, p, 'review')
+      const goalTopics = topicsOf(g.id)
+      if (p) commit(day, g, p, 'review', goalTopics.length ? { topicIds: finalReviewOrder(goalTopics) } : undefined)
       else
         warnings.push({
           kind: 'reviewNotPlaced',
@@ -388,6 +395,31 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
           date,
           message: `No room for the “${g.name}” review on ${format(parseISO(date), 'EEE d MMM')}.`,
         })
+    }
+  }
+
+  // spaced review (SPEC 3.6): a topic marked done gets short reviews at +2, +5, +10 days,
+  // as long as they land before the final review day(s)
+  for (const g of deadlineGoals) {
+    const before = addDaysIso(g.deadline!, -(g.reviewDays ?? 0))
+    for (const t of topicsOf(g.id)) {
+      if (!t.done || t.doneAt === undefined) continue
+      const mine = (s: Session) => s.goalId === g.id && isSpacedReviewOf(s, t.id)
+      const kept = state.sessions.filter((s) => mine(s) && s.date >= from && isKept(s) && s.status !== 'skipped').length
+      const had = reviewsHad(t.id, state.sessions.filter((s) => s.date < from)) + kept
+      for (const date of spacedReviewDates(iso(new Date(t.doneAt)), had, from, before)) {
+        // if that day is full, try the next one or two (still before the final review)
+        for (let shift = 0; shift <= 2; shift++) {
+          const d = addDaysIso(date, shift)
+          const day = dayByDate.get(d)
+          if (!day || d >= before) break
+          const p = bestSpotUpTo(day, g, REVIEW_MINUTES.ideal, REVIEW_MINUTES.min)
+          if (p) {
+            commit(day, g, p, 'review', { topicIds: [t.id], spacedReview: true })
+            break
+          }
+        }
+      }
     }
   }
 
@@ -665,6 +697,23 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
           progress = true
         }
       }
+    }
+  }
+
+  // ----- 7. topic labels (SPEC 3.6): planned study sessions say which topic(s) they cover -----
+  for (const g of deadlineGoals) {
+    const goalTopics = topicsOf(g.id)
+    if (!goalTopics.length) continue
+    const planned = out.filter((s) => s.goalId === g.id && s.kind === 'goal')
+    const labels = assignTopics(
+      goalTopics,
+      planned,
+      Math.round((g.totalHours ?? 0) * 60),
+      workedByTopic(state.sessions.filter((s) => s.goalId === g.id)),
+    )
+    for (const s of planned) {
+      const ids = labels.get(s.id)
+      if (ids?.length) s.topicIds = ids
     }
   }
 

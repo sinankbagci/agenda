@@ -29,6 +29,15 @@ describe('focus store', () => {
     expect((await startFocus({ goalId: g.id, now: T0 + 5 * MIN }, db)).runStartedAt).toBe(T0)
   })
 
+  it('records the topic of the session Focus started from', async () => {
+    const { db, r, g } = await setup()
+    await r.sessions.update('a', { topicIds: ['rings', 'groups'] })
+    const t = await startFocus({ goalId: g.id, sessionId: 'a', now: T0 }, db)
+    expect(t.topicId).toBe('rings')
+    await endFocus(T0 + 30 * MIN, db)
+    expect((await db.focusIntervals.toArray())[0]!.topicId).toBe('rings')
+  })
+
   it('reaching the day’s planned amount auto-completes the sessions (work + breaks count)', async () => {
     const { db, r, g } = await setup()
     await startFocus({ goalId: g.id, sessionId: 'a', now: T0 }, db)

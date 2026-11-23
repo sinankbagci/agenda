@@ -37,6 +37,27 @@ describe('dayTimeline', () => {
     expect(dayTimeline('2026-11-28', data()).map((i) => i.kind)).toEqual(['meal'])
   })
 
+  it('labels sessions with their topics (SPEC: “Algebra: Rings”)', () => {
+    const topics = [
+      { id: 'rings', goalId: 'midterm', name: 'Rings', order: 0, weight: 1, weak: false, done: false, reviewsDone: 0 },
+      { id: 'groups', goalId: 'midterm', name: 'Groups', order: 1, weight: 1, weak: true, done: true, reviewsDone: 0 },
+    ]
+    const base = { kind: 'goal' as const, goalId: 'midterm', date: TODAY, status: 'planned' as const, frozen: false }
+    const sessions: Session[] = [
+      { ...base, id: 'a', start: '16:00', end: '17:00', topicIds: ['rings'] },
+      { ...base, id: 'b', kind: 'review', start: '17:30', end: '17:50', topicIds: ['groups'], spacedReview: true },
+      { ...base, id: 'c', kind: 'review', start: '18:00', end: '19:00', topicIds: ['groups', 'rings'] },
+      { ...base, id: 'd', start: '20:00', end: '21:00', topicIds: ['gone'] },
+    ]
+    const items = dayTimeline(TODAY, data({ sessions, fixedBlocks: [], topics }))
+    expect(items.map((i) => `${i.title} (${i.subtitle})`)).toEqual([
+      'Algebra midterm: Rings (1h)',
+      'Review: Algebra midterm — Groups (20m)',
+      'Review: Algebra midterm (1h · Groups, Rings)',
+      'Algebra midterm (1h)', // deleted topic: plain name
+    ])
+  })
+
   it('copes with sessions of a deleted goal', () => {
     const items = dayTimeline(TODAY, data({ goals: [] }))
     expect(items.some((i) => i.title === 'Deleted goal')).toBe(true)

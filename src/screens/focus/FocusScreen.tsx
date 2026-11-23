@@ -47,6 +47,7 @@ export function FocusScreen() {
     () => void finish(),
   )
   const goals = useLiveQuery(() => repos.goals.all(), [], [])
+  const topics = useLiveQuery(() => repos.topics.all(), [], [])
   const intervals = useLiveQuery(
     (): Promise<FocusInterval[]> => (timer ? db.focusIntervals.where('startedAt').aboveOrEqual(timer.runStartedAt).toArray() : Promise.resolve([])),
     [timer?.runStartedAt],
@@ -59,6 +60,7 @@ export function FocusScreen() {
   if (!timer) return <FocusStart />
 
   const goal = goals.find((g) => g.id === timer.goalId)
+  const topicName = topics.find((t) => t.id === timer.topicId)?.name
   const left = remainingMs(timer, now)
   const pct = timer.phaseLength ? 1 - left / (timer.phaseLength * 60_000) : 1
   const dots = cycleDots(timer)
@@ -77,6 +79,7 @@ export function FocusScreen() {
         <span className="focus-goal">
           {goal?.icon && <span aria-hidden>{goal.icon} </span>}
           {goal?.name ?? 'Goal'}
+          {topicName && <span className="focus-topic">{topicName}</span>}
         </span>
         <span className="focus-top-spacer" />
       </div>

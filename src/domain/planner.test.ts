@@ -449,3 +449,63 @@ describe('one-off additions (+ Add)', () => {
     expect(Math.abs(a - b)).toBeLessThanOrEqual(30)
   })
 })
+
+describe('topics & spaced review (SPEC 3.6)', () => {
+  const t = (id: string, order: number, over: Partial<import('../db/types').Topic> = {}) => ({
+    id, goalId: 'midterm', name: id, order, weight: 1, weak: false, done: false, reviewsDone: 0, ...over,
+  })
+  const SPEC_TOPICS = [t('groups', 0), t('subgroups', 1), t('rings', 2), t('homs', 3)]
+  const labelsInOrder = (ss: Session[]) => goalSessions(ss, 'midterm').map((s) => (s.topicIds ?? []).join('+'))
+
+  it('labels study sessions with topics in list order, each topic getting its share', () => {
+    const r = plan(withGoals([midterm], { topics: SPEC_TOPICS }), TODAY)
+    const labels = labelsInOrder(r.sessions)
+    expect(labels.every((l) => l.length > 0)).toBe(true)
+    // first sessions are Groups, last ones Homomorphisms, order never goes backwards
+    expect(labels[0]).toBe('groups')
+    expect(labels.at(-1)).toBe('homs')
+    const order = ['groups', 'subgroups', 'rings', 'homs']
+    const firstIdx = labels.map((l) => order.indexOf(l.split('+')[0]!))
+    for (let i = 1; i < firstIdx.length; i++) expect(firstIdx[i]!).toBeGreaterThanOrEqual(firstIdx[i - 1]!)
+    // each topic ≈ a quarter of the 15 h
+    const perTopic = new Map<string, number>()
+    for (const s of goalSessions(r.sessions, 'midterm')) for (const id of s.topicIds!) perTopic.set(id, (perTopic.get(id) ?? 0) + mins(s) / s.topicIds!.length)
+    for (const id of order) expect(Math.abs(perTopic.get(id)! - 225)).toBeLessThanOrEqual(60)
+    // labels don't change how much is planned
+    expect(sum(goalSessions(r.sessions, 'midterm'))).toBe(sum(goalSessions(plan(withGoals([midterm]), TODAY).sessions, 'midterm')))
+  })
+
+  it('a weak topic gets more time; the final review covers all topics, weak first', () => {
+    const r = plan(withGoals([midterm], { topics: [t('groups', 0), t('subgroups', 1), t('rings', 2, { weak: true }), t('homs', 3)] }), TODAY)
+    const perTopic = new Map<string, number>()
+    for (const s of goalSessions(r.sessions, 'midterm')) for (const id of s.topicIds!) perTopic.set(id, (perTopic.get(id) ?? 0) + mins(s) / s.topicIds!.length)
+    expect(perTopic.get('rings')!).toBeGreaterThan(perTopic.get('groups')! * 1.25)
+    expect(goalSessions(r.sessions, 'midterm', 'review')[0]!.topicIds).toEqual(['rings', 'groups', 'subgroups', 'homs'])
+  })
+
+  it('marking a topic done schedules 15–20 min reviews at +2, +5, +10 days and moves study on', () => {
+    const doneAt = new Date(2026, 10, 23, 18, 0).getTime() // Mon 23 Nov
+    const topics = [t('groups', 0, { done: true, doneAt }), t('subgroups', 1), t('rings', 2), t('homs', 3)]
+    const r = plan(withGoals([midterm], { topics }), TODAY, { from: '2026-11-24' })
+    const spaced = r.sessions.filter((s) => s.spacedReview && s.topicIds?.[0] === 'groups')
+    // +2 = Wed 25; +5 = Sat 28 has no free time → next day with room (Mon 30); +10 = Thu 3 Dec
+    expect(spaced.map((s) => s.date)).toEqual(['2026-11-25', '2026-11-30', '2026-12-03'])
+    for (const s of spaced) {
+      expect(mins(s)).toBeGreaterThanOrEqual(15)
+      expect(mins(s)).toBeLessThanOrEqual(20)
+    }
+    expect(labelsInOrder(r.sessions).some((l) => l.split('+').includes('groups'))).toBe(false) // done: no new study on it
+    expect(labelsInOrder(r.sessions)[0]).toBe('subgroups')
+  })
+
+  it('spaced reviews never land on or after the final review day, and done ones are not repeated', () => {
+    const doneAt = new Date(2026, 11, 4, 18, 0).getTime() // Fri 4 Dec → +2 Sun (no room) …, +5 Wed 9, +10 after the deadline
+    const had = session({ id: 'r1', goalId: 'midterm', kind: 'review', date: '2026-12-07', start: '16:00', end: '16:20', status: 'done', topicIds: ['groups'], spacedReview: true })
+    const r = plan(withGoals([midterm], { topics: [t('groups', 0, { done: true, doneAt })], sessions: [had] }), '2026-12-08')
+    const spaced = r.sessions.filter((s) => s.spacedReview)
+    expect(spaced.map((s) => s.date)).toEqual(['2026-12-09'])
+    // the final review on the 11th covers the (only) topic but isn't a spaced review
+    expect(goalSessions(r.sessions, 'midterm', 'review').find((s) => s.date === '2026-12-11')?.spacedReview).toBeUndefined()
+    expect(spaced.every((s) => s.date < '2026-12-11')).toBe(true)
+  })
+})

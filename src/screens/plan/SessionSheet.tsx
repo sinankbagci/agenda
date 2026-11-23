@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { format, parseISO } from 'date-fns'
 import type { Goal, Session } from '../../db/types'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { repos } from '../../db/repositories'
 import { canComplete, canSkip, lastNoteBefore, plannedMinutes, validatePartialMinutes } from '../../domain/sessions'
 import { formatDuration } from '../../domain/time'
 import { NumberInput } from '../../ui/form'
@@ -84,6 +86,8 @@ export function SessionSheet({
             {session.actualMinutes !== undefined && session.status !== 'planned' ? ` (${formatDuration(session.actualMinutes)})` : ''}
           </strong>
         </p>
+
+        {actionsMode && <SessionTopics session={session} />}
 
         {session.pinned && actionsMode && (
           <p className="pinned-info">
@@ -203,6 +207,29 @@ export function SessionSheet({
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+/** The session's topics with a one-tap "done" toggle (marking a topic done schedules its reviews). */
+function SessionTopics({ session }: { session: Session }) {
+  const topics = useLiveQuery(() => (session.goalId ? repos.topics.byGoal(session.goalId) : Promise.resolve([])), [session.goalId], [])
+  const mine = topics.filter((t) => session.topicIds?.includes(t.id))
+  if (!mine.length) return null
+  return (
+    <div className="session-topics">
+      <span className="muted small">{session.kind === 'review' && !session.spacedReview ? 'Covers (weak first):' : 'Topic:'}</span>
+      {mine.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          className={t.done ? 'chip-toggle on' : 'chip-toggle'}
+          aria-pressed={t.done}
+          onClick={() => void repos.topics.update(t.id, t.done ? { done: false, doneAt: undefined } : { done: true, doneAt: Date.now() })}
+        >
+          {t.done ? `✓ ${t.name} done` : `Mark ${t.name} done`}
+        </button>
+      ))}
     </div>
   )
 }

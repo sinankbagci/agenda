@@ -38,7 +38,7 @@ Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's fe
 7. Today / Week / Month views  ← done
 8. Session actions  ← done
 9. Focus Mode (timestamp timer) + tests  ← done
-10. Topics & spaced review + tests
+10. Topics & spaced review + tests  ← done
 11. Progress & streaks
 12. Activity log, check-in, backlog lists
 13. Learning from the log
@@ -125,3 +125,9 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - `ActiveTimer` (single row, survives app close) snapshots `config` (goal override or defaults), `runStartedAt` and `targets` (today's open sessions of the goal, the one Focus started from first, with prior partial minutes).
 - Progress stays session-based: `allocate(targets, sessions, tracked)` → fully covered done, next partial, extra on the last one. `syncFocus` only flips sessions to done when the planned amount is reached (auto-complete); `endFocus` settles minutes, or — with nothing planned today — records a done session for the focused time. FocusIntervals are the detailed log (work vs break).
 - UI: `useFocus` re-renders 4×/s for display only and syncs every 5 s, at phase end and on return to the app; bells via `playBell` after `unlockAudio()` in the Start tap; `useWakeLock` while running; full-screen `/focus` (fixed overlay), `FocusPill` elsewhere; summary + note prompt at the end; "◷ Focus" in the session sheet.
+
+## Topics & spaced review (src/domain/topics.ts, planner, TopicsSection)
+
+- Effective weight = weight × 1.5 if weak. `assignTopics` labels the goal's planned study sessions in time order, filling open topics in list order; each needs its share of `totalHours` minus minutes already worked (`workedByTopic`), scaled to the planned minutes; done topics get nothing new; a topic is only named on a session if it covers ≥ 10 min of it.
+- Planner: labels are a final pass (`topicIds` on `goal` sessions); final review sessions get all topics weak-first (`finalReviewOrder`); a topic marked done gets 20 (min 15) min `review` sessions with `spacedReview: true` at doneDate +2/+5/+10 days (missed ones move to the first possible day, done ones aren't repeated, a full day shifts up to +2), only before the first final review day. `PlanState.topics` is optional.
+- Topics are a plan input (`usePlanKeeper` signature, `loadPlanState`). Timeline titles: "Goal: Topic", spaced "Review: Goal — Topic", final review lists topics in the subtitle. Session sheet toggles topics done; Focus records the session's first topic (`ActiveTimer.topicId`, intervals). Goal cards show "x / y topics done".

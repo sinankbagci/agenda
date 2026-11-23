@@ -6,6 +6,7 @@ import { TEMPLATES, normalizeGoal, previewGoal, toDraft, validateGoal, type Goal
 import { Problems, Segmented, hasErrors } from '../../ui/form'
 import { GoalForm } from './GoalForm'
 import { GoalNotes } from './GoalNotes'
+import { TopicsSection } from './TopicsSection'
 import { TemplatePicker } from './TemplatePicker'
 
 /**
@@ -97,6 +98,7 @@ export function GoalEditScreen({ base = '/goals' }: { base?: string }) {
         </div>
       )}
       <GoalForm draft={draft} set={setDraft} today={today} isNew={isNew} />
+      {!isNew && draft.type === 'deadline' && <TopicsSection goalId={id!} totalHours={draft.totalHours ?? 0} />}
       {!isNew && <GoalNotes goalId={id!} />}
       <div className="form-footer">
         {preview && <p className="preview">{preview}</p>}
