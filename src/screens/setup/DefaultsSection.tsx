@@ -1,4 +1,5 @@
-import { Field, NumberInput, Problems } from '../../ui/form'
+import { Field, NumberInput, Problems, Switch, useSettings } from '../../ui/form'
+import { repos } from '../../db/repositories'
 import { useSettingsDraft } from '../../ui/useSettingsDraft'
 import type { Check } from '../../domain/setupValidation'
 
@@ -17,7 +18,8 @@ function validate(d: Record<(typeof KEYS)[number], number>): Check {
 
 export function DefaultsSection() {
   const { draft, set, check } = useSettingsDraft(KEYS, validate)
-  if (!draft) return null
+  const settings = useSettings()
+  if (!draft || !settings) return null
   return (
     <div className="card">
       <h3>Focus timer</h3>
@@ -41,6 +43,12 @@ export function DefaultsSection() {
           <NumberInput value={draft.calendarAlertMin} suffix="min" onChange={(v) => set('calendarAlertMin', v)} />
         </Field>
       </div>
+      <h3>Feedback</h3>
+      <Switch
+        label="Play a soft sound when a session is done"
+        checked={settings.completionSound}
+        onChange={(completionSound) => void repos.settings.update({ completionSound })}
+      />
       <Problems check={check} />
     </div>
   )

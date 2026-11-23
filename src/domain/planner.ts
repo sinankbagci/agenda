@@ -35,6 +35,11 @@ export interface PlanState {
 export interface PlanOptions {
   /** First day to (re)generate. Defaults to `today`; use tomorrow to keep today frozen. */
   from?: ISODate
+  /**
+   * Minutes since midnight: nothing new is placed on the `from` day before this time
+   * ("Re-plan today" in the afternoon mustn't fill the morning that already passed).
+   */
+  notBefore?: number
 }
 
 export type OverloadOption =
@@ -154,6 +159,9 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
     })
   }
   const dayByDate = new Map(days.map((d) => [d.date, d]))
+  if (options.notBefore !== undefined && days[0]) {
+    days[0].free = subtract(days[0].free, [{ start: 0, end: options.notBefore }])
+  }
 
   // group setup warnings ("No room for Lunch" on every weekday → one warning)
   const setupGroups = new Map<string, ISODate[]>()
@@ -250,8 +258,12 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
     return t
   }
 
+  // "Skip" means "not this goal today": nothing new for that goal on a day it was skipped.
+  const skippedOn = new Set(state.sessions.filter((s) => s.status === 'skipped' && s.goalId).map((s) => `${s.goalId}|${s.date}`))
+
   /** Best spot for exactly `len` minutes of `goal` on `day`, or undefined. */
   const bestSpot = (day: Day, goal: Goal, len: number): Placement | undefined => {
+    if (skippedOn.has(`${goal.id}|${day.date}`)) return undefined
     if (day.goalMin + len > day.capMin) return undefined
     if (goal.focus === 'demanding' && day.demandingMin + len > day.demandingCapMin) return undefined
     const win = categoryWindow(goal)
@@ -388,12 +400,16 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
     const n = rampDays.length
     const weights = rampDays.map((_, i) => (n > 1 ? RAMP_START + ((RAMP_END - RAMP_START) * i) / (n - 1) : 1))
     const wSum = weights.reduce((a, b) => a + b, 0)
-    const total = remaining
+    // Work already done / kept on a ramp day counts toward that day's share, so a day you've
+    // already studied doesn't get more on top ("Re-plan today" after finishing today's session).
+    const keptOn = (date: ISODate) => committedMinutes(g, (d) => d === date && d >= from)
+    const kept = rampDays.map((d) => keptOn(d.date))
+    const total = remaining + kept.reduce((a, b) => a + b, 0)
 
     // first pass: follow the ramp, carrying amounts too small for a session forward
     let carry = 0
     rampDays.forEach((day, i) => {
-      carry += (total * weights[i]!) / wSum
+      carry += (total * weights[i]!) / wSum - kept[i]!
       const last = i === n - 1
       let guard = 0
       while (remaining > 0 && guard++ < 20) {
