@@ -18,6 +18,7 @@ import { FocusPill } from '../screens/focus/FocusPill'
 import { LogScreen } from '../screens/log/LogScreen'
 import { ListsScreen } from '../screens/lists/ListsScreen'
 import { WeeklyReviewScreen } from '../screens/review/WeeklyReviewScreen'
+import { YearReviewScreen } from '../screens/review/YearReviewScreen'
 import { useSettings } from '../ui/form'
 
 /** Main layout: sidebar (landscape) / tab bar (portrait). */
@@ -90,6 +91,7 @@ export function App() {
         <Route path="/log" element={<LogScreen />} />
         <Route path="/lists" element={<ListsScreen />} />
         <Route path="/review" element={<WeeklyReviewScreen />} />
+        <Route path="/review/year" element={<YearReviewScreen />} />
         <Route path="/goals" element={<GoalsScreen />} />
         <Route path="/goals/new" element={<GoalEditScreen />} />
         <Route path="/goals/:id" element={<GoalDetailScreen />} />

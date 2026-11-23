@@ -955,3 +955,35 @@ div.field[role='group'] .segmented, div.field[role='group'] .goal-chips { align-
 .quick-examples { margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .example { border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 999px; padding: 6px 12px; min-height: 36px; font: inherit; font-size: 0.85rem; }
 .quick-banner { max-width: 720px; padding: 10px 14px; border-radius: 12px; background: var(--accent-soft); margin: 0 0 16px; }
+
+/* ---------- Year in review ---------- */
+.review-tabs { margin-bottom: 12px; }
+.review-tabs .seg { display: inline-flex; align-items: center; text-decoration: none; }
+.year-pick select { min-width: 110px; }
+/* heatmap: sequential blue, validated ≥ 3:1 per step on each surface; empty = neutral */
+.heatmap { --h0: var(--border); --h1: #86b6ef; --h2: #5598e7; --h3: #256abf; --h4: #104281; }
+@media (prefers-color-scheme: dark) { .heatmap { --h1: #1c5cab; --h2: #2a78d6; --h3: #5598e7; --h4: #9ec5f4; } }
+.heat-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.heat-scroll svg { display: block; width: 100%; height: auto; }
+.heatmap rect { outline: none; cursor: pointer; }
+.heatmap rect.active, .heatmap rect:focus-visible { stroke: var(--text); stroke-width: 1.5; }
+.heat-l0 { fill: var(--h0); background: var(--h0); }
+.heat-l1 { fill: var(--h1); background: var(--h1); }
+.heat-l2 { fill: var(--h2); background: var(--h2); }
+.heat-l3 { fill: var(--h3); background: var(--h3); }
+.heat-l4 { fill: var(--h4); background: var(--h4); }
+.heat-legend { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
+.heat-swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+.heat-legend-note { margin-left: 6px; }
+/* energy / mood: two series, colours validated per mode */
+.year-screen { --c-energy: #2a78d6; --c-mood: #eb6834; }
+@media (prefers-color-scheme: dark) { .year-screen { --c-energy: #3987e5; --c-mood: #d95926; } }
+.mood-energy { --series: var(--c-energy); }
+.mood-mood { --series: var(--c-mood); }
+.mood-line { fill: none; stroke: var(--series); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.mood-dot { fill: var(--series); stroke: var(--surface); stroke-width: 1.5; }
+.chart-legend { display: flex; gap: 16px; margin-bottom: 4px; }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--series); display: inline-block; }
+.media-stars { letter-spacing: 1px; color: var(--text); }
+.hbar-label a { color: inherit; text-decoration: none; font-weight: 600; }
