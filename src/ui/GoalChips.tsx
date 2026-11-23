@@ -24,4 +24,4 @@ export function GoalChips({ goals, value, onChange }: { goals: readonly Goal[]; 
 }
 
 /** Goals that can use extra free time: deadline, ongoing and book goals that are active (not recurring). */
-export const boostableGoals = (goals: readonly Goal[]) => goals.filter((g) => g.active && g.type !== 'recurring')
+export const boostableGoals = (goals: readonly Goal[]) => goals.filter((g) => g.active && !g.completedAt && g.type !== 'recurring')

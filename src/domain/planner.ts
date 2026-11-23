@@ -134,7 +134,7 @@ interface Placement {
 
 export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}): PlanResult {
   const from = options.from ?? today
-  const goals = state.goals.filter((g) => g.active)
+  const goals = state.goals.filter((g) => g.active && !g.completedAt) // finished one-off tasks need nothing more
   const bufferMin = state.setup.settings.bufferMin
   const travel = makeTravel(state.setup.travelTimes)
   const warnings: PlanWarning[] = []

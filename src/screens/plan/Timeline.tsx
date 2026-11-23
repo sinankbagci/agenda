@@ -13,6 +13,8 @@ export interface TimelineHandlers {
   onPart: (sessionId: string) => void
   onSkip: (sessionId: string) => void
   onUndo: (sessionId: string) => void
+  /** Tap on a fixed-program block (one-off events can be edited / deleted from the day). */
+  onOpenFixed?: (blockId: string) => void
 }
 
 export function Timeline({
@@ -79,6 +81,15 @@ export function Timeline({
           </>
         )
 
+        if (i.kind === 'fixed' && handlers.onOpenFixed) {
+          return (
+            <li key={i.id} className={cls}>
+              <button type="button" className="tl-link tl-fixed-btn" onClick={() => handlers.onOpenFixed!(i.id.replace(/^fixed:/, ''))}>
+                {main}
+              </button>
+            </li>
+          )
+        }
         if (!work || !session) {
           return (
             <li key={i.id} className={cls}>

@@ -148,7 +148,7 @@ const round5 = (m: number) => Math.max(10, Math.round(m / 5) * 5)
 export function sessionLengthSuggestions(goals: readonly Goal[], sessions: readonly Session[], today: ISODate): Suggestion[] {
   const out: Suggestion[] = []
   for (const g of goals) {
-    if (!g.active) continue
+    if (!g.active || g.oneOff) continue
     const ss = recentOver(sessions, today).filter((s) => s.goalId === g.id && s.kind === 'goal' && (s.status === 'done' || s.status === 'partial') && s.actualMinutes !== undefined)
     if (ss.length < 5) continue
     const ratio = median(ss.map((s) => s.actualMinutes! / Math.max(1, plannedMin(s))))
@@ -188,7 +188,7 @@ export interface EstimateHint {
  */
 export function estimateHint(category: GoalCategory, hours: number, goals: readonly Goal[], sessions: readonly Session[], logs: readonly LogEntry[], today: ISODate, excludeId?: string): EstimateHint | undefined {
   if (!(hours > 0)) return undefined
-  const finished = goals.filter((g) => g.id !== excludeId && g.type === 'deadline' && g.category === category && g.deadline && g.deadline < today && (g.totalHours ?? 0) >= 2)
+  const finished = goals.filter((g) => g.id !== excludeId && !g.oneOff && g.type === 'deadline' && g.category === category && g.deadline && g.deadline < today && (g.totalHours ?? 0) >= 2)
   const ratios = finished.map((g) => {
     const actual =
       sessions.filter((s) => s.goalId === g.id && s.kind === 'goal').reduce((m, s) => m + (s.status === 'done' ? s.actualMinutes ?? plannedMin(s) : s.status === 'partial' ? s.actualMinutes ?? 0 : 0), 0) +

@@ -555,3 +555,25 @@ describe('learning in slot scoring (SPEC 3.4)', () => {
     expect(after.every((s) => toMinutes(s.start) >= 17 * 60)).toBe(true) // now in the evening
   })
 })
+
+describe('one-off tasks', () => {
+  const hw: Goal = { ...midterm, id: 'hw', name: 'Homework', oneOff: true, totalHours: 2, reviewDays: 0, minSession: 30, maxSession: 120, deadline: '2026-11-24' } // do it by Mon 23
+
+  it('a task due tomorrow is planned today, as one 2 h session, before other study', () => {
+    const r = plan(withGoals([midterm, hw]), TODAY)
+    const tasks = goalSessions(r.sessions, 'hw')
+    expect(tasks.map((s) => `${s.date} ${mins(s)}`)).toEqual(['2026-11-23 120'])
+    expect(r.warnings.filter((w) => w.kind === 'deadlineShortfall')).toEqual([])
+  })
+
+  it('a finished task gets nothing more', () => {
+    const r = plan(withGoals([{ ...hw, deadline: '2026-11-27', completedAt: 1 }]), TODAY)
+    expect(goalSessions(r.sessions, 'hw')).toEqual([])
+  })
+
+  it('a task that can’t fit before it’s due says so', () => {
+    const big = { ...hw, totalHours: 8 }
+    const w = plan(withGoals([big]), TODAY).warnings.find((x) => x.kind === 'deadlineShortfall')
+    expect(w?.message).toMatch(/^“Homework”: .* of 8h doesn’t fit before Tue 24 Nov\.$/)
+  })
+})

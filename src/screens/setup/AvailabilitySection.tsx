@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { format } from 'date-fns'
+import { addDays, differenceInCalendarDays, format } from 'date-fns'
 import { repos } from '../../db/repositories'
 import type { AvailabilityOverride, AvailabilityWindow, Energy, Weekday } from '../../db/types'
 import {
@@ -13,6 +13,8 @@ import { WEEKDAYS_MON_FIRST, WEEKDAY_LONG, formatDuration, toMinutes } from '../
 import { EditableList } from '../../ui/EditableList'
 import { DateInput, Field, Segmented, TimeInput, WeekdayPicker } from '../../ui/form'
 import { GoalChips, boostableGoals } from '../../ui/GoalChips'
+import { groupOverrides, type OverrideGroup } from '../../domain/oneOff'
+import type { Check } from '../../domain/setupValidation'
 
 const ENERGY_OPTIONS = [
   { value: 'high', label: 'High' },
@@ -126,7 +128,8 @@ export function AvailabilitySection() {
 // ---------- One-off overrides ----------
 
 type OverrideDraft = {
-  date: string
+  from: string
+  to: string
   kind: 'busy' | 'free'
   allDay: boolean
   start: string
@@ -135,9 +138,9 @@ type OverrideDraft = {
   boostGoalIds: string[]
 }
 
-const toOverride = (d: OverrideDraft): Omit<AvailabilityOverride, 'id'> => {
-  if (d.allDay) return { date: d.date, kind: d.kind }
-  const o: Omit<AvailabilityOverride, 'id'> = { date: d.date, kind: d.kind, start: d.start, end: d.end }
+const toOverride = (d: OverrideDraft, date: string): Omit<AvailabilityOverride, 'id'> => {
+  if (d.allDay) return { date, kind: d.kind }
+  const o: Omit<AvailabilityOverride, 'id'> = { date, kind: d.kind, start: d.start, end: d.end }
   if (d.kind === 'free') {
     o.energy = d.energy
     if (d.boostGoalIds.length) o.boostGoalIds = d.boostGoalIds
@@ -146,47 +149,77 @@ const toOverride = (d: OverrideDraft): Omit<AvailabilityOverride, 'id'> => {
 }
 
 const formatDay = (iso: string) => format(new Date(`${iso}T00:00`), 'EEE d MMM yyyy')
+const nextIso = (iso: string) => format(addDays(new Date(`${iso}T00:00`), 1), 'yyyy-MM-dd')
 
-export function OverridesSection() {
+function validateDraft(d: OverrideDraft): Check {
+  const c = validateOverride(toOverride(d, d.from))
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.to) || d.to < d.from) c.errors.push('The last day must be on or after the first day.')
+  else if (differenceInCalendarDays(new Date(`${d.to}T00:00`), new Date(`${d.from}T00:00`)) >= 31) c.errors.push('At most 31 days at a time.')
+  return c
+}
+
+/** Save a change over a range of days: one row per day, sharing a group id so it lists / edits as one. */
+async function saveGroup(d: OverrideDraft, replaceIds: string[]) {
+  for (const id of replaceIds) await repos.availabilityOverrides.remove(id)
+  const groupId = d.to > d.from ? crypto.randomUUID() : undefined
+  for (let date = d.from; date <= d.to; date = nextIso(date)) {
+    const o = toOverride(d, date)
+    if (groupId) o.groupId = groupId
+    await repos.availabilityOverrides.add(o)
+  }
+}
+
+type Row = OverrideGroup & { id: string }
+
+export function OverridesSection({ from: fromDate, to: toDate }: { from?: string; to?: string } = {}) {
   const today = format(new Date(), 'yyyy-MM-dd')
   const overrides = useLiveQuery(() => repos.availabilityOverrides.all(), [])
   const goals = useLiveQuery(() => repos.goals.all(), [], [])
   if (!overrides) return null
   const goalNames = (ids?: string[]) => (ids ?? []).map((id) => goals.find((g) => g.id === id)?.name).filter(Boolean).join(', ')
-  const upcoming = overrides.filter((o) => o.date >= today).sort((a, b) => a.date.localeCompare(b.date) || (a.start ?? '').localeCompare(b.start ?? ''))
+  const rows: Row[] = groupOverrides(overrides)
+    .filter((g) => g.to >= (fromDate ?? today) && (!toDate || g.from <= toDate))
+    .map((g) => ({ ...g, id: g.key }))
   return (
-    <EditableList<AvailabilityOverride, OverrideDraft>
-      items={upcoming}
+    <EditableList<Row, OverrideDraft>
+      items={rows}
       empty="No upcoming changes. Add one for days that differ from your usual week."
       addLabel="Add one-off change"
-      renderRow={(o) => (
-        <span className="row-main">
-          <strong>{formatDay(o.date)}</strong>
-          <span className={o.kind === 'busy' ? 'badge busy' : 'badge free'}>{o.kind === 'busy' ? 'Busy' : 'Free'}</span>
-          <span className="muted">{o.start ? `${o.start}–${o.end}` : 'all day'}</span>
-          {o.kind === 'free' && o.energy && o.energy !== 'normal' && <EnergyTag energy={o.energy} />}
-          {o.boostGoalIds?.length ? <span className="muted">for {goalNames(o.boostGoalIds)}</span> : null}
-        </span>
-      )}
-      toDraft={(o) => ({
-        date: o.date,
-        kind: o.kind,
-        allDay: !o.start,
-        start: o.start ?? '13:00',
-        end: o.end ?? '18:00',
-        energy: o.energy ?? 'normal',
-        boostGoalIds: o.boostGoalIds ?? [],
+      renderRow={(g) => {
+        const o = g.override
+        return (
+          <span className="row-main">
+            <strong>{g.from === g.to ? formatDay(g.from) : `${formatDay(g.from)} – ${formatDay(g.to)}`}</strong>
+            <span className={o.kind === 'busy' ? 'badge busy' : 'badge free'}>{o.kind === 'busy' ? 'Busy' : 'Free'}</span>
+            <span className="muted">{o.start ? `${o.start}–${o.end}` : 'all day'}</span>
+            {o.kind === 'free' && o.energy && o.energy !== 'normal' && <EnergyTag energy={o.energy} />}
+            {o.boostGoalIds?.length ? <span className="muted">for {goalNames(o.boostGoalIds)}</span> : null}
+          </span>
+        )
+      }}
+      toDraft={(g) => ({
+        from: g.from,
+        to: g.to,
+        kind: g.override.kind,
+        allDay: !g.override.start,
+        start: g.override.start ?? '13:00',
+        end: g.override.end ?? '18:00',
+        energy: g.override.energy ?? 'normal',
+        boostGoalIds: g.override.boostGoalIds ?? [],
       })}
-      newDraft={() => ({ date: today, kind: 'busy', allDay: true, start: '13:00', end: '18:00', energy: 'normal', boostGoalIds: [] })}
-      validate={(d) => validateOverride(toOverride(d))}
-      onSave={(d, id) =>
-        id ? repos.availabilityOverrides.put({ ...toOverride(d), id }) : repos.availabilityOverrides.add(toOverride(d))
-      }
-      onDelete={(id) => repos.availabilityOverrides.remove(id)}
+      newDraft={() => ({ from: fromDate && fromDate > today ? fromDate : today, to: fromDate && fromDate > today ? fromDate : today, kind: 'busy', allDay: true, start: '13:00', end: '18:00', energy: 'normal', boostGoalIds: [] })}
+      validate={validateDraft}
+      onSave={(d, id) => saveGroup(d, id ? rows.find((r) => r.id === id)?.ids ?? [] : [])}
+      onDelete={async (id) => {
+        for (const x of rows.find((r) => r.id === id)?.ids ?? []) await repos.availabilityOverrides.remove(x)
+      }}
       renderForm={(d, set) => (
         <div className="form-grid">
-          <Field label="Date">
-            <DateInput value={d.date} onChange={(date) => set({ ...d, date })} />
+          <Field label="From day">
+            <DateInput value={d.from} onChange={(from) => set({ ...d, from, to: d.to < from ? from : d.to })} />
+          </Field>
+          <Field label="To day">
+            <DateInput value={d.to} onChange={(to) => set({ ...d, to })} />
           </Field>
           <Field label="I’m…" group>
             <Segmented

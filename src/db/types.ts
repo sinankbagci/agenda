@@ -53,6 +53,13 @@ export interface Goal {
   // book
   totalPages?: number
   pagesDone?: number
+  /**
+   * One-off task ("+ Add" → Task, e.g. homework due tomorrow): a deadline goal with
+   * `deadline` = the day after "do it by", no review days.
+   */
+  oneOff?: boolean
+  /** A one-off task marked finished. Nothing more is planned for it. */
+  completedAt?: EpochMs
   /** Book: page you were on, by date (one entry per day) — for "current pace". */
   pageLog?: { date: ISODate; pages: number }[]
   // focus overrides
@@ -110,6 +117,8 @@ export interface AvailabilityOverride {
   kind: 'busy' | 'free'
   /** Extra free time only: energy of that time (default normal). */
   energy?: Energy
+  /** Days added together ("Sat–Sun, 10:00–18:00") share a group id and are listed / edited as one. */
+  groupId?: string
   /**
    * Extra free time only: "use it for" these goals. Deadline goals pull work into it;
    * ongoing / book goals may go beyond their usual target there.
@@ -277,10 +286,11 @@ export interface BacklogItem {
 }
 
 export interface WeeklyReview {
-  /** Monday of the reviewed week. */
+  /** Monday of the week being planned (the review looks back at the week before it). */
   weekStart: ISODate
   confirmedAt: EpochMs
-  adjustments: unknown[]
+  /** Plain-language notes of the quick adjustments made during the review. */
+  adjustments: string[]
 }
 
 export interface Stats {
