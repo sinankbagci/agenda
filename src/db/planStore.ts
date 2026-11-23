@@ -7,7 +7,7 @@ import { addDays, format } from 'date-fns'
 import { db as defaultDb, type AgendaDB } from './db'
 import { createRepos } from './repositories'
 import { plan, type PlanResult, type PlanState, type PlanWarning } from '../domain/planner'
-import type { ISODate } from './types'
+import type { ISODate, Session } from './types'
 import { toMinutes } from '../domain/time'
 
 export async function loadPlanState(db: AgendaDB = defaultDb): Promise<PlanState> {
@@ -54,10 +54,29 @@ export async function replan(now: Date, options: ReplanOptions = {}, db: AgendaD
     const from = options.includeToday || !todayHasPlan ? today : tomorrow
     const nowMin = now.getHours() * 60 + now.getMinutes()
 
-    // Re-planning today: sessions that already started stay where they are (in progress,
-    // or missed); new work only goes after now.
+    // Repair: earlier versions could save the same planned meal / travel block several times
+    // (see below). Keep one of each.
+    const seen = new Set<string>()
+    const duplicates: string[] = []
+    for (const s of [...state.sessions].sort((a, b) => a.id.localeCompare(b.id))) {
+      if (s.status !== 'planned' || (s.kind !== 'meal' && s.kind !== 'travel')) continue
+      const k = blockKey(s)
+      if (seen.has(k)) duplicates.push(s.id)
+      else seen.add(k)
+    }
+    if (duplicates.length) {
+      await db.sessions.bulkDelete(duplicates)
+      const gone = new Set(duplicates)
+      state.sessions = state.sessions.filter((s) => !gone.has(s.id))
+    }
+
+    // Re-planning today: goal work that already started stays where it is (in progress, or
+    // missed); new work only goes after now. Meals and travel are NOT frozen — the planner
+    // regenerates them, and freezing them is what duplicated them.
     if (from === today) {
-      const started = state.sessions.filter((s) => s.date === today && s.status === 'planned' && !s.frozen && toMinutes(s.start) < nowMin)
+      const started = state.sessions.filter(
+        (s) => s.date === today && s.status === 'planned' && !s.frozen && (s.kind === 'goal' || s.kind === 'review') && toMinutes(s.start) < nowMin,
+      )
       for (const s of started) s.frozen = true
       if (started.length) await db.sessions.bulkPut(started)
     }
@@ -79,6 +98,9 @@ export async function lastPlanWarnings(db: AgendaDB = defaultDb): Promise<PlanWa
   const row = await db.meta.get('planWarnings')
   return row ? (JSON.parse(row.value) as PlanWarning[]) : []
 }
+
+/** Identity of a meal / travel block on a day. */
+const blockKey = (s: Session) => [s.date, s.kind, s.start, s.end, s.mealId ?? s.label ?? '', s.fromLocationId ?? '', s.toLocationId ?? ''].join('|')
 
 const relatedTables = (db: AgendaDB) => [
   db.settings,
