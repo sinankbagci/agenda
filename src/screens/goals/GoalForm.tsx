@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import type { GoalType, Priority, TimeBucket } from '../../db/types'
 import { CATEGORIES, COLORS, GOAL_TYPES, ICONS, blankGoal, type GoalDraft } from '../../domain/goals'
 import { DateInput, Field, LocationSelect, NumberInput, Segmented, Switch, TextInput, useSettings } from '../../ui/form'
+import { EstimateHintCard } from '../learning/EstimateHintCard'
 
 /** Fields every goal type shares; kept when switching type. */
 const SHARED = ['name', 'category', 'color', 'icon', 'priority', 'focus', 'preferredTime', 'locationId', 'active'] as const
@@ -18,6 +20,7 @@ export function GoalForm({ draft, set, today, isNew }: { draft: GoalDraft; set: 
   const settings = useSettings()
   const d = draft
   const up = (patch: Partial<GoalDraft>) => set({ ...d, ...patch })
+  const [estimateHandled, setEstimateHandled] = useState(false)
   const customTimer = d.pomodoroWork !== undefined
 
   return (
@@ -81,6 +84,18 @@ export function GoalForm({ draft, set, today, isNew }: { draft: GoalDraft; set: 
               <NumberInput value={d.reviewDays ?? NaN} min={0} max={14} suffix="days" onChange={(v) => up({ reviewDays: num(v) })} />
             </Field>
           </div>
+        )}
+        {d.type === 'deadline' && isNew && !estimateHandled && (d.totalHours ?? 0) > 0 && (
+          <EstimateHintCard
+            category={d.category}
+            hours={d.totalHours!}
+            today={today}
+            onUse={(totalHours) => {
+              setEstimateHandled(true) // don't re-apply the factor to the new number
+              up({ totalHours })
+            }}
+            onKeep={() => setEstimateHandled(true)}
+          />
         )}
 
         {d.type === 'recurring' && (

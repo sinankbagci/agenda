@@ -13,6 +13,7 @@ import { beginFocus } from '../focus/FocusScreen'
 import { GoalNotes } from './GoalNotes'
 import { TopicsSection } from './TopicsSection'
 import { WeeklyChart } from './WeeklyChart'
+import { SuggestionsCard } from '../learning/Suggestions'
 import { DeadlineBadge, ProgressBar, StreakChip, useShortfall } from './GoalProgress'
 
 /** /goals/:id — progress, streaks, history chart, stats, topics and notes (SPEC 4.2). */
@@ -114,6 +115,8 @@ export function GoalDetailScreen() {
           <span className="stat-value">{formatDuration(thisWeek)}</span>
         </div>
       </div>
+
+      <SuggestionsCard today={today} goalId={goal.id} />
 
       <h2>Minutes per week</h2>
       <div className="card">

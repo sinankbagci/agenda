@@ -19,6 +19,7 @@
 import { addDays, differenceInCalendarDays, format, parseISO, startOfWeek } from 'date-fns'
 import type { Goal, ISODate, LogEntry, Rule, Session, Settings, Topic } from '../db/types'
 import { loggedMinutes, loggedSessions } from './log'
+import { bucketBonus, completionByBucket } from './learning'
 import { buildDay, makeTravel, type DayLayout, type FreeSlot, type SlotInput } from './freeSlots'
 import { intersect, subtract, type Range } from './ranges'
 import { formatDuration, fromMinutes, toMinutes } from './time'
@@ -272,6 +273,9 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
     return t
   }
 
+  // Learning (SPEC 3.4): completion rate per goal per time of day over the last ~4 weeks.
+  const rates = completionByBucket(state.sessions, today)
+
   // "Skip" means "not this goal today": nothing new for that goal on a day it was skipped.
   const skippedOn = new Set(state.sessions.filter((s) => s.status === 'skipped' && s.goalId).map((s) => `${s.goalId}|${s.date}`))
 
@@ -292,6 +296,7 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
         if (start - t < slot.start || end + t > slot.end || start < win.start || end > win.end) continue
         let score = ENERGY_SCORE[goal.focus][slot.energy]
         if (goal.preferredTime && bucketOf(start) === goal.preferredTime) score += 2
+        score += bucketBonus(rates, goal.id, bucketOf(start)) // SPEC 3.4: when this goal tends to get done
         if (day.placed.some((p) => p.goalId === goal.id && p.end > start - 60 && p.start < end + 60)) score -= 2
         score -= t / 15
         if (!best || score > best.score || (score === best.score && start < best.start)) best = { start, end, travel: t, slot, score }

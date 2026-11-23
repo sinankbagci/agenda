@@ -12,6 +12,7 @@ import { WarningsBanner } from './WarningsBanner'
 import { SessionSheet, type SheetMode } from './SessionSheet'
 import { AddToDaySheet } from './AddToDaySheet'
 import { CheckInPrompt } from '../log/CheckInPrompt'
+import { SuggestionsCard } from '../learning/Suggestions'
 import { beginFocus } from '../focus/FocusScreen'
 import { complete, partial, skip, undo, withNote } from '../../domain/sessions'
 import type { Session } from '../../db/types'
@@ -152,6 +153,8 @@ export function DayScreen() {
           handlers={handlers}
         />
       )}
+
+      {isToday && data && <SuggestionsCard today={today} />}
 
       {isToday && data && <CheckInPrompt today={today} sessions={data.sessions} nowMin={now.getHours() * 60 + now.getMinutes()} />}
 
