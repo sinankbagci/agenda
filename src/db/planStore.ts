@@ -12,7 +12,7 @@ import { toMinutes } from '../domain/time'
 
 export async function loadPlanState(db: AgendaDB = defaultDb): Promise<PlanState> {
   const r = createRepos(db)
-  const [settings, fixedBlocks, availabilityWindows, availabilityOverrides, mealRules, locations, travelTimes, rules, goals, sessions] =
+  const [settings, fixedBlocks, availabilityWindows, availabilityOverrides, mealRules, locations, travelTimes, rules, goals, sessions, topics] =
     await Promise.all([
       r.settings.get(),
       r.fixedBlocks.all(),
@@ -24,12 +24,14 @@ export async function loadPlanState(db: AgendaDB = defaultDb): Promise<PlanState
       r.rules.all(),
       r.goals.all(),
       r.sessions.all(),
+      r.topics.all(),
     ])
   return {
     setup: { settings, fixedBlocks, availabilityWindows, availabilityOverrides, mealRules, locations, travelTimes, rules },
     caps: settings,
     goals,
     sessions,
+    topics,
   }
 }
 
@@ -112,4 +114,5 @@ const relatedTables = (db: AgendaDB) => [
   db.travelTimes,
   db.rules,
   db.goals,
+  db.topics,
 ]

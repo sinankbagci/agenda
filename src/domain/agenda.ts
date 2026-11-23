@@ -3,7 +3,7 @@
  * No React, no Dexie — screens pass in the rows they loaded.
  */
 import { addDays, endOfMonth, format, parseISO, startOfMonth, startOfWeek } from 'date-fns'
-import type { FixedBlock, Goal, ISODate, Location, Session, SessionStatus, Weekday } from '../db/types'
+import type { FixedBlock, Goal, ISODate, Location, Session, SessionStatus, Topic, Weekday } from '../db/types'
 import { countedMinutes } from './planner'
 import { fixedOccursOn } from './freeSlots'
 import { formatDuration, toMinutes } from './time'
@@ -31,6 +31,12 @@ export interface DayData {
   fixedBlocks: readonly FixedBlock[]
   goals: readonly Goal[]
   locations: readonly Location[]
+  topics?: readonly Topic[]
+}
+
+/** "Rings" / "Groups, Subgroups" for a session's topics (unknown ids are skipped). */
+export function topicNames(ids: readonly string[] | undefined, topics: readonly Topic[] | undefined): string {
+  return (ids ?? []).map((id) => topics?.find((t) => t.id === id)?.name).filter(Boolean).join(', ')
 }
 
 const KIND_ORDER: Record<ItemKind, number> = { fixed: 0, meal: 1, travel: 2, review: 3, goal: 4 }
@@ -69,11 +75,15 @@ export function dayTimeline(date: ISODate, data: DayData): TimelineItem[] {
       case 'review': {
         const g = goal(s.goalId)
         const name = g?.name ?? 'Deleted goal'
+        const topics = topicNames(s.topicIds, data.topics)
+        // "Algebra: Rings" (SPEC 3.6); spaced review "Review: Algebra — Rings"; final review lists all topics below
+        const title =
+          s.kind === 'review' ? (s.spacedReview && topics ? `Review: ${name} — ${topics}` : `Review: ${name}`) : topics ? `${name}: ${topics}` : name
         items.push({
           ...base,
           kind: s.kind,
-          title: s.kind === 'review' ? `Review: ${name}` : name,
-          subtitle: [len, place(s.locationId)].filter(Boolean).join(' · '),
+          title,
+          subtitle: [len, place(s.locationId), s.kind === 'review' && !s.spacedReview && topics ? topics : undefined].filter(Boolean).join(' · '),
           color: g?.color,
           icon: g?.icon,
           goalId: s.goalId,

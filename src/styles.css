@@ -775,3 +775,26 @@ div.field[role='group'] .segmented, div.field[role='group'] .goal-chips { align-
 }
 @media (orientation: portrait), (max-width: 700px) { .focus-pill { bottom: calc(env(safe-area-inset-bottom) + 76px); } }
 .focus-summary { max-width: 640px; }
+
+/* ---------- Topics ---------- */
+.topic-count { font-size: 0.95rem; font-weight: 500; }
+.topics-list { padding: 0; }
+.topic-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; min-height: 60px; }
+.topic-row.done .topic-main strong { text-decoration: line-through; color: var(--muted); }
+.topic-move { display: flex; flex-direction: column; gap: 4px; }
+.topic-move .btn { min-height: 28px; min-width: 40px; padding: 0; }
+.topic-main { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; border: 0; background: none; color: inherit; font: inherit; text-align: left; min-height: var(--tap); justify-content: center; }
+.topic-edit { flex: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.topic-edit > .input { flex: 1; min-width: 140px; }
+.topic-weight { display: flex; align-items: center; gap: 6px; }
+.topic-weight .input { max-width: 80px; }
+.topic-add { display: flex; gap: 10px; padding: 10px 12px; }
+.topic-add .input { flex: 1; }
+.chip-toggle { min-height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; font-weight: 600; font-size: 0.9rem; white-space: nowrap; }
+.chip-toggle.on { background: var(--ok); border-color: var(--ok); color: #fff; }
+.chip-toggle.on.weak { background: var(--warn); border-color: var(--warn); }
+.topic-progress { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+.topic-bar { width: 80px; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.topic-bar span { display: block; height: 100%; background: var(--goal, var(--accent)); }
+.session-topics { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
+.focus-topic { display: block; font-size: 1rem; font-weight: 500; color: var(--muted); }
