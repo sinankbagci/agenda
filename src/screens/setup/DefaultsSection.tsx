@@ -3,7 +3,7 @@ import { repos } from '../../db/repositories'
 import { useSettingsDraft } from '../../ui/useSettingsDraft'
 import type { Check } from '../../domain/setupValidation'
 
-const KEYS = ['pomodoroWork', 'pomodoroBreak', 'pomodoroLongBreak', 'cyclesBeforeLong', 'calendarAlertMin'] as const
+const KEYS = ['pomodoroWork', 'pomodoroBreak', 'pomodoroLongBreak', 'cyclesBeforeLong'] as const
 
 function validate(d: Record<(typeof KEYS)[number], number>): Check {
   const errors: string[] = []
@@ -12,7 +12,6 @@ function validate(d: Record<(typeof KEYS)[number], number>): Check {
   if (!(d.pomodoroLongBreak >= 0 && d.pomodoroLongBreak <= 120)) errors.push('Long break must be 0–120 minutes.')
   if (!(Number.isInteger(d.cyclesBeforeLong) && d.cyclesBeforeLong >= 1 && d.cyclesBeforeLong <= 12))
     errors.push('Cycles before a long break must be 1–12.')
-  if (!(d.calendarAlertMin >= 0 && d.calendarAlertMin <= 1440)) errors.push('Calendar alert must be 0–1440 minutes.')
   return { errors, warnings: [] }
 }
 
@@ -35,12 +34,6 @@ export function DefaultsSection() {
         </Field>
         <Field label="Cycles before long break">
           <NumberInput value={draft.cyclesBeforeLong} onChange={(v) => set('cyclesBeforeLong', v)} />
-        </Field>
-      </div>
-      <h3>Calendar export</h3>
-      <div className="form-grid">
-        <Field label="Alert before each session">
-          <NumberInput value={draft.calendarAlertMin} suffix="min" onChange={(v) => set('calendarAlertMin', v)} />
         </Field>
       </div>
       <h3>Feedback</h3>

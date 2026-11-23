@@ -30,7 +30,7 @@ export function useSetupSummary(): Partial<Record<SectionKey, string>> {
         availability: free ? `${formatDuration(free)} per week` : 'Not set',
         rules: rules ? plural(rules, 'rule') : 'None',
         limits: `${s.dailyCapWeekday}h weekdays · ${s.dailyCapWeekend}h weekends · ${s.bufferMin} min buffer`,
-        defaults: `${s.pomodoroWork}/${s.pomodoroBreak} focus · ${s.calendarAlertMin} min alerts`,
+        defaults: `${s.pomodoroWork}/${s.pomodoroBreak} focus · sound ${s.completionSound ? 'on' : 'off'}`,
       }
     }, []) ?? {}
   )
