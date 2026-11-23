@@ -798,3 +798,72 @@ div.field[role='group'] .segmented, div.field[role='group'] .goal-chips { align-
 .topic-bar span { display: block; height: 100%; background: var(--goal, var(--accent)); }
 .session-topics { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
 .focus-topic { display: block; font-size: 1rem; font-weight: 500; color: var(--muted); }
+
+/* ---------- Progress & streaks ---------- */
+.pbar { display: block; flex: 1; min-width: 80px; height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
+.pbar > span { display: block; height: 100%; border-radius: 4px; background: var(--goal, var(--accent)); transition: width 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.card-progress { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
+.card-progress .pbar { max-width: 220px; }
+.status-badge { font-size: 0.78rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.status-badge.st-done, .status-badge.st-onTrack, .status-badge.st-ahead { background: var(--accent-soft); color: var(--ok); }
+.status-badge.st-behind { background: #f6e0cf; color: #8a4b14; }
+.status-badge.st-atRisk { background: #f8d7d3; color: #9b2c22; }
+@media (prefers-color-scheme: dark) {
+  .status-badge.st-behind { background: #3e2c1d; color: #e0a15a; }
+  .status-badge.st-atRisk { background: #43201c; color: #ff8a7a; }
+}
+.streak { font-size: 0.85rem; font-weight: 700; }
+.streak:not(.on) { color: var(--muted); }
+
+.goal-detail .goal-icon { width: 56px; height: 56px; font-size: 1.8rem; }
+.detail-title { display: flex; align-items: center; gap: 14px; }
+.detail-title h1 { margin: 0; }
+.detail-card { max-width: 720px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 10px; }
+.detail-card p { margin: 0; }
+.detail-progress-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 1.1rem; }
+.detail-card .pbar { height: 12px; border-radius: 6px; }
+.page-log { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.stat-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 720px; margin: 4px 0 8px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; display: flex; flex-direction: column; gap: 2px; }
+.stat-label { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+.stat-value { font-size: 1.6rem; font-weight: 600; }
+
+/* chart (see WeeklyChart; colours validated ≥ 3:1 on both surfaces) */
+.chart { margin: 0; }
+.chart-wrap { position: relative; }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart-grid { stroke: var(--border); stroke-width: 1; }
+.chart-target { stroke: var(--muted); stroke-width: 1; }
+.chart-tick { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.chart-value { fill: var(--text); font-size: 12px; font-weight: 700; }
+.chart-bar { fill: color-mix(in srgb, var(--goal) 85%, black); transition: opacity 0.15s; }
+.chart-bar.active { opacity: 0.75; }
+@media (prefers-color-scheme: dark) { .chart-bar { fill: color-mix(in srgb, var(--goal) 70%, white); } }
+.chart-hit { fill: transparent; cursor: pointer; outline: none; }
+.chart-hit:focus-visible { stroke: var(--text); stroke-width: 1; }
+.chart-tip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 8px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 0.85rem;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.chart-tip strong { font-size: 1rem; }
+.chart-tip span { color: var(--muted); }
+.chart-table summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: var(--tap); display: flex; align-items: center; }
+.chart-table table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.chart-table th, .chart-table td { text-align: left; padding: 6px 4px; border-top: 1px solid var(--border); }
+/* in a vertical card the bar must not flex (flex-basis 0 collapses its height) */
+.detail-card .pbar { flex: none; width: 100%; }
+.pager .btn { white-space: nowrap; }
+.goal-detail .pager .btn { font-size: 1rem; }
+.goal-detail h2 { margin-top: 24px; }

@@ -8,6 +8,7 @@ import { FixedBlockEditScreen } from '../screens/setup/FixedBlockEditScreen'
 import { Onboarding } from '../screens/onboarding/Onboarding'
 import { GoalsScreen } from '../screens/goals/GoalsScreen'
 import { GoalEditScreen } from '../screens/goals/GoalEditScreen'
+import { GoalDetailScreen } from '../screens/goals/GoalDetailScreen'
 import { DayScreen } from '../screens/plan/DayScreen'
 import { WeekScreen } from '../screens/plan/WeekScreen'
 import { MonthScreen } from '../screens/plan/MonthScreen'
@@ -84,7 +85,9 @@ export function App() {
         <Route path="/month/:month" element={<MonthScreen />} />
         <Route path="/focus" element={<FocusScreen />} />
         <Route path="/goals" element={<GoalsScreen />} />
-        <Route path="/goals/:id" element={<GoalEditScreen />} />
+        <Route path="/goals/new" element={<GoalEditScreen />} />
+        <Route path="/goals/:id" element={<GoalDetailScreen />} />
+        <Route path="/goals/:id/edit" element={<GoalEditScreen />} />
         {NAV_ITEMS.filter((i) => !['/settings', '/goals', '/today', '/week', '/month', '/focus'].includes(i.path)).map((item) => (
           <Route key={item.path} path={item.path} element={<Placeholder title={item.label} />} />
         ))}

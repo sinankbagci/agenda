@@ -39,7 +39,7 @@ Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's fe
 8. Session actions  ← done
 9. Focus Mode (timestamp timer) + tests  ← done
 10. Topics & spaced review + tests  ← done
-11. Progress & streaks
+11. Progress & streaks  ← done
 12. Activity log, check-in, backlog lists
 13. Learning from the log
 14. Weekly review
@@ -87,7 +87,7 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 
 - Pure helpers: `blankGoal(type, today)`, `TEMPLATES`, `validateGoal(draft, today)`, `normalizeGoal` (drops other types' fields and empty optionals; recurring min/max session = session length; ongoing keeps exactly one of per-day/per-week), `previewGoal` / `describeGoal` (user-facing text), `studyDays(deadline, reviewDays, today)` (today included, review days excluded).
 - Priority: 1 = Low, 2 = Medium, 3 = High (higher wins). Book goals store `totalPages`, `pagesDone`, optional target date in `deadline`, and reading time in `minutesPerDay` (what the planner schedules).
-- Always save `normalizeGoal(draft)`. The edit screen (`GoalEditScreen`) is reused by onboarding at `/onboarding/goal/:id`; goal detail (topics, notes, history) comes in steps 10–11.
+- Always save `normalizeGoal(draft)`. The edit screen (`GoalEditScreen`) is reused by onboarding at `/onboarding/goal/:id`; the goal detail screen is `/goals/:id` (form at `/goals/:id/edit`, new at `/goals/new`).
 
 ## Planner (src/domain/planner.ts, src/db/planStore.ts)
 
@@ -131,3 +131,10 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - Effective weight = weight × 1.5 if weak. `assignTopics` labels the goal's planned study sessions in time order, filling open topics in list order; each needs its share of `totalHours` minus minutes already worked (`workedByTopic`), scaled to the planned minutes; done topics get nothing new; a topic is only named on a session if it covers ≥ 10 min of it.
 - Planner: labels are a final pass (`topicIds` on `goal` sessions); final review sessions get all topics weak-first (`finalReviewOrder`); a topic marked done gets 20 (min 15) min `review` sessions with `spacedReview: true` at doneDate +2/+5/+10 days (missed ones move to the first possible day, done ones aren't repeated, a full day shifts up to +2), only before the first final review day. `PlanState.topics` is optional.
 - Topics are a plan input (`usePlanKeeper` signature, `loadPlanState`). Timeline titles: "Goal: Topic", spaced "Review: Goal — Topic", final review lists topics in the subtitle. Session sheet toggles topics done; Focus records the session's first topic (`ActiveTimer.topicId`, intervals). Goal cards show "x / y topics done".
+
+## Progress & streaks (src/domain/progress.ts, GoalDetailScreen, GoalProgress, WeeklyChart)
+
+- All derived from sessions (done → actual or planned minutes, partial → actual). `deadlineProgress`: expected-by-now follows the planner's 1.0→1.5 ramp from the goal's start to the review day; slack max(30 min, 10%); statuses done / ahead (+60) / onTrack / behind (gap) / atRisk (the last plan's `deadlineShortfall` for the goal, read from meta `planWarnings`). Reviews count as time invested, not toward `totalHours`.
+- `streak`: weekly (recurring, ongoing per week) or daily (ongoing/book per day). Periods with nothing planned are neutral; the current period is neutral until met; the target is capped by what was planned in that period.
+- Books: `logPages` keeps a per-day `pageLog` (also from the book session's note prompt); pace = pages since the earliest entry in the last 14 days ÷ days to today; finish date and on-track vs the target date.
+- `/goals/:id` detail: progress card by type, streak, stats (total time, completion rate, this week), `WeeklyChart` (dataviz specs: ≤24px columns, 4px rounded tops, hairline grid, tap/focus tooltip — on touch only a mouse hides it on leave, table view; bar colour = goal colour 85% + black in light, 70% + white in dark, validated ≥ 3:1), topics, notes. Cards show a compact bar/badge/streak.

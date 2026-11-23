@@ -7,6 +7,7 @@ import { repos } from '../../db/repositories'
 import { canComplete, canSkip, lastNoteBefore, plannedMinutes, validatePartialMinutes } from '../../domain/sessions'
 import { formatDuration } from '../../domain/time'
 import { NumberInput } from '../../ui/form'
+import { logPages, validatePages } from '../../domain/progress'
 
 /** 'part' = actions with the "did part of it" box already open (swipe-left → Part). */
 export type SheetMode = 'actions' | 'part' | 'note'
@@ -52,6 +53,7 @@ export function SessionSheet({
   const [partOpen, setPartOpen] = useState(mode === 'part')
   const [minutes, setMinutes] = useState(session.actualMinutes ?? Math.round(plannedMinutes(session) / 2 / 5) * 5)
   const [partError, setPartError] = useState<string>()
+  const [page, setPage] = useState<number>(NaN)
   const noteRef = useRef<HTMLTextAreaElement>(null)
   const actionsMode = mode !== 'note'
   const last = lastNoteBefore(session, allSessions)
@@ -64,6 +66,9 @@ export function SessionSheet({
 
   const saveNoteAndClose = () => {
     if ((session.note ?? '') !== note.trim()) onNote(note)
+    if (goal?.type === 'book' && Number.isFinite(page) && !validatePages(page, goal.totalPages)) {
+      void repos.goals.update(goal.id, logPages(goal, page, today))
+    }
     onClose()
   }
 
@@ -181,13 +186,21 @@ export function SessionSheet({
           </label>
         )}
 
+        {mode === 'note' && goal?.type === 'book' && (
+          <label className="field">
+            <span className="field-label">Which page are you on? (optional)</span>
+            <NumberInput value={page} min={0} max={goal.totalPages} onChange={setPage} />
+            {Number.isFinite(page) && validatePages(page, goal.totalPages) && <span className="error small">{validatePages(page, goal.totalPages)}</span>}
+          </label>
+        )}
+
         <div className="button-row sheet-footer">
           {mode === 'note' ? (
             <>
               <button type="button" className="btn primary" onClick={saveNoteAndClose}>
-                {note.trim() ? 'Save note' : 'Done'}
+                {Number.isFinite(page) ? 'Save' : note.trim() ? 'Save note' : 'Done'}
               </button>
-              {note.trim() && (
+              {(note.trim() || Number.isFinite(page)) && (
                 <button type="button" className="btn" onClick={onClose}>
                   Not now
                 </button>
