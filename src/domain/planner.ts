@@ -178,9 +178,17 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
     return `${base}:${n}`
   }
 
-  // meals and base travel become sessions so the day's timeline is complete
+  // meals and base travel become sessions so the day's timeline is complete — unless the
+  // same block is already stored and kept on that day (never emit a duplicate)
+  const keptBlocks = new Set(
+    state.sessions
+      .filter((s) => s.date >= from && isKept(s) && (s.kind === 'meal' || s.kind === 'travel'))
+      .map((s) => (s.kind === 'meal' ? `${s.date}|meal|${s.mealId}` : `${s.date}|travel|${s.fromLocationId}|${s.toLocationId}|${s.start}`)),
+  )
   for (const d of days) {
     for (const b of d.layout.blocks) {
+      if (b.kind === 'meal' && keptBlocks.has(`${d.date}|meal|${b.mealId}`)) continue
+      if (b.kind === 'travel' && keptBlocks.has(`${d.date}|travel|${b.fromId}|${b.toId}|${fromMinutes(b.start)}`)) continue
       if (b.kind === 'meal') {
         out.push({
           id: newId(d.date, 'meal', b.mealId),

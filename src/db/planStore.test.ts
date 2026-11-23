@@ -91,6 +91,29 @@ describe('replan (database)', () => {
     expect((await r.sessions.byDate('2026-11-23')).some((s) => s.goalId === 'reading')).toBe(true)
   })
 
+  it('regression: re-planning a day without goal work never duplicates meals', async () => {
+    const { db, r } = await seeded()
+    await db.goals.clear()
+    await db.mealRules.bulkPut([
+      { id: 'breakfast', name: 'Breakfast', windowStart: '07:00', windowEnd: '09:00', duration: 20 },
+      { id: 'lunch', name: 'Lunch', windowStart: '13:00', windowEnd: '14:00', duration: 30 },
+    ])
+    for (const h of [7, 9, 13, 14, 15]) await replan(new Date(2026, 10, 23, h, 15), {}, db)
+    const meals = (await r.sessions.byDate('2026-11-23')).filter((s) => s.kind === 'meal').map((s) => s.label)
+    // Breakfast is before "now" in every run (the case that used to duplicate); Lunch can't fit (classes 9–15)
+    expect(meals.sort()).toEqual(['Breakfast', 'Dinner'])
+  })
+
+  it('repairs meal / travel blocks that were already duplicated', async () => {
+    const { db, r } = await seeded()
+    await replan(MON, {}, db)
+    const dinner = (await r.sessions.byDate('2026-11-24')).find((s) => s.kind === 'meal')!
+    const lunchToday = { ...dinner, date: '2026-11-23', start: '13:00', end: '13:30', label: 'Lunch', mealId: 'lunch' }
+    await db.sessions.bulkPut([1, 2, 3, 4].map((n) => ({ ...lunchToday, id: `dup${n}`, frozen: true })))
+    await replan(new Date(2026, 10, 23, 13, 15), { includeToday: true }, db)
+    expect((await r.sessions.byDate('2026-11-23')).filter((s) => s.label === 'Lunch')).toHaveLength(1)
+  })
+
   it('does not duplicate sessions when run repeatedly', async () => {
     const { db } = await seeded()
     const first = await replan(MON, {}, db)
