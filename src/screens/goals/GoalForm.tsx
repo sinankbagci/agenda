@@ -36,7 +36,7 @@ export function GoalForm({ draft, set, today, isNew }: { draft: GoalDraft; set: 
             </select>
           </Field>
         </div>
-        <Field label="Colour">
+        <Field label="Colour" group>
           <div className="swatches">
             {COLORS.map((c) => (
               <button
@@ -51,7 +51,7 @@ export function GoalForm({ draft, set, today, isNew }: { draft: GoalDraft; set: 
             ))}
           </div>
         </Field>
-        <Field label="Icon (optional)">
+        <Field label="Icon (optional)" group>
           <div className="icons">
             {ICONS.map((i) => (
               <button key={i} type="button" className={i === d.icon ? 'icon-btn on' : 'icon-btn'} aria-pressed={i === d.icon} onClick={() => up({ icon: i === d.icon ? undefined : i })}>
@@ -99,7 +99,7 @@ export function GoalForm({ draft, set, today, isNew }: { draft: GoalDraft; set: 
 
         {d.type === 'ongoing' && (
           <div className="form-grid">
-            <Field label="Target">
+            <Field label="Target" group>
               <Segmented
                 value={d.minutesPerDay !== undefined ? 'day' : 'week'}
                 options={[
@@ -152,7 +152,7 @@ export function GoalForm({ draft, set, today, isNew }: { draft: GoalDraft; set: 
       <h2>Planning</h2>
       <div className="card">
         <div className="form-grid">
-          <Field label="Priority" hint="Wins when goals compete for the same time.">
+          <Field label="Priority" hint="Wins when goals compete for the same time." group>
             <Segmented<`${Priority}`>
               value={`${d.priority}`}
               options={[
@@ -163,7 +163,7 @@ export function GoalForm({ draft, set, today, isNew }: { draft: GoalDraft; set: 
               onChange={(v) => up({ priority: Number(v) as Priority })}
             />
           </Field>
-          <Field label="Focus" hint="Demanding goals go to your high-energy time.">
+          <Field label="Focus" hint="Demanding goals go to your high-energy time." group>
             <Segmented
               value={d.focus}
               options={[

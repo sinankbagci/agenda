@@ -110,3 +110,11 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - Every status change saves and calls `enqueueReplan()` (today stays frozen). Notes save without re-planning.
 - Planner rules added here: a goal skipped on a day gets nothing new that day; ramp shares subtract work already kept on that day; `notBefore` (minutes) keeps "Re-plan today" after now, and `replan(..., { includeToday })` freezes today's already-started planned sessions first.
 - UI: big ✓ (`.check`), `SwipeRow` (right = done, left = Part/Skip or Undo; gesture distance kept in a ref, the click ending a swipe is swallowed), `SessionSheet` (modes actions / part / note), `playChime` (Web Audio, called inside the tap) when `settings.completionSound`, `Burst` confetti, "Re-plan the rest of today" on Today, session notes on the goal page.
+
+## One-off additions (“+ Add” on a day; src/domain/oneOff.ts, AddToDaySheet) — added between steps 8 and 9, polish in step 14
+
+- **Event** → a locked one-off `FixedBlock` (`rule.kind = 'once'`); travel comes from the free-slot builder.
+- **Goal session** → a stored session with `frozen: true, pinned: true` (id `pin:<uuid>`); the planner keeps it and counts it toward the goal; removable from its sheet (📌).
+- **Extra free time** → one `AvailabilityOverride` (kind `free`) per day with `energy` and optional `boostGoalIds` (“use it for”). Planner: deadline goals pull work into the boosted windows first (fair share of the day's cap among boosted goals; those days leave the ramp), ongoing/book goals fill the windows beyond their target after their normal fill. Caps still apply.
+- Saving re-plans; anything that touches today re-plans today too (`includeToday`).
+- `Field` has a `group` mode — use it for any field holding several buttons (segmented, chips, weekday picker, swatches); a `<label>` around buttons gets tied to the first one.

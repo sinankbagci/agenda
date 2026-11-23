@@ -79,7 +79,7 @@ export function FixedBlockEditScreen() {
           </Field>
         </div>
 
-        <Field label="Repeats">
+        <Field label="Repeats" group>
           <Segmented
             value={rule.kind}
             options={[
@@ -94,7 +94,7 @@ export function FixedBlockEditScreen() {
 
         {rule.kind === 'weekly' ? (
           <>
-            <Field label="On">
+            <Field label="On" group>
               <WeekdayPicker value={rule.weekdays} onChange={(weekdays) => setDraft({ ...draft, rule: { ...rule, weekdays } })} />
             </Field>
             <div className="form-grid">

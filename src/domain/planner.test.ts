@@ -360,3 +360,92 @@ describe('travel and setup warnings', () => {
     expect(setup[0]!.kind === 'setup' && setup[0]!.dates.length).toBe(30) // every weekday in 6 weeks
   })
 })
+
+describe('one-off additions (+ Add)', () => {
+  const SAT = '2026-11-28'
+  const SUN = '2026-11-29'
+  const extra = (state: PlanState, boostGoalIds?: string[], energy: 'high' | 'normal' = 'high'): PlanState => ({
+    ...state,
+    setup: {
+      ...state.setup,
+      availabilityOverrides: [SAT, SUN].map((date, i) => ({ id: `x${i}`, date, kind: 'free' as const, start: '10:00', end: '18:00', energy, ...(boostGoalIds ? { boostGoalIds } : {}) })),
+    },
+  })
+
+  it('a one-off event (tennis Fri 13:00–15:00 at a club) is planned around, with travel', () => {
+    const state = withGoals([midterm, reading])
+    state.setup = {
+      ...state.setup,
+      availabilityWindows: [...state.setup.availabilityWindows, { id: 'fri', weekday: 5, start: '15:20', end: '16:00', energy: 'normal' }],
+      locations: [...state.setup.locations, { id: 'club', name: 'Tennis club' }],
+      travelTimes: [...state.setup.travelTimes, { fromId: 'home', toId: 'club', minutes: 10 }],
+      fixedBlocks: [{ id: 't', title: 'Tennis', rule: { kind: 'once', date: '2026-11-28' }, start: '13:00', end: '15:00', locationId: 'club', locked: true }],
+    }
+    const r = plan(state, TODAY)
+    const sat = r.sessions.filter((s) => s.date === '2026-11-28')
+    expect(sat.some((s) => s.kind === 'travel' && s.toLocationId === 'club' && s.end === '13:00')).toBe(true)
+    expect(sat.some((s) => s.kind === 'travel' && s.fromLocationId === 'club' && s.start === '15:00')).toBe(true)
+  })
+
+  it('a pinned goal session stays put, counts toward the goal, and others plan around it', () => {
+    const pinned = session({ id: 'pin', goalId: 'midterm', date: SAT, start: '10:00', end: '12:00', frozen: true, pinned: true })
+    const r2 = plan(extra(withGoals([midterm], { sessions: [pinned] })), TODAY)
+    expect(r2.sessions.some((s) => s.id === 'pin')).toBe(false) // not re-emitted: it's stored, not planned
+    const plannedPlusPinned = sum(goalSessions(r2.sessions, 'midterm')) + 120
+    expect(plannedPlusPinned).toBeGreaterThanOrEqual(900) // the pinned 2h count toward the 15h
+    expect(plannedPlusPinned).toBeLessThan(900 + 45)
+    for (const s of r2.sessions.filter((x) => x.date === SAT && x.goalId)) expect(s.start >= '12:10' || s.end <= '09:50').toBe(true)
+  })
+
+  it('extra free time without “use it for” is simply more room, with its own energy', () => {
+    const r = plan(extra(withGoals([midterm, reading])), TODAY)
+    expect(goalSessions(r.sessions, 'reading').filter((s) => s.date === SAT).map(mins)).toEqual([30]) // target only
+    expect(sum(goalSessions(r.sessions, 'midterm'))).toBeGreaterThanOrEqual(900)
+    expect(goalSessions(r.sessions, 'midterm').some((s) => s.date === SAT)).toBe(true) // weekend now takes a ramp share
+  })
+
+  it('“use it for” a deadline goal pulls work into the weekend and lightens the weekdays', () => {
+    const plain = plan(extra(withGoals([midterm])), TODAY)
+    const boosted = plan(extra(withGoals([midterm]), ['midterm']), TODAY)
+    const weekend = (ss: Session[]) => sum(goalSessions(ss, 'midterm').filter((s) => s.date === SAT || s.date === SUN))
+    const weekdays = (ss: Session[]) => sum(goalSessions(ss, 'midterm').filter((s) => s.date !== SAT && s.date !== SUN))
+    expect(weekend(boosted.sessions)).toBe(2 * 240) // up to the 4h weekend cap each day
+    expect(weekdays(boosted.sessions)).toBeLessThan(weekdays(plain.sessions))
+    const total = sum(goalSessions(boosted.sessions, 'midterm'))
+    expect(total).toBeGreaterThanOrEqual(900)
+    expect(total).toBeLessThan(900 + 45)
+    for (const s of goalSessions(boosted.sessions, 'midterm').filter((x) => x.date === SAT)) {
+      expect(s.start >= '10:00' && s.end <= '18:00').toBe(true)
+    }
+  })
+
+  it('“use it for” reading lets it go beyond its 30 min target, within the daily cap', () => {
+    const r = plan(extra(withGoals([reading, midterm]), ['reading']), TODAY)
+    const sat = goalSessions(r.sessions, 'reading').filter((s) => s.date === SAT)
+    expect(sum(sat)).toBeGreaterThan(30)
+    const satWork = r.sessions.filter((s) => s.date === SAT && (s.kind === 'goal' || s.kind === 'review'))
+    expect(sum(satWork)).toBeLessThanOrEqual(240)
+    for (const s of sat) expect(s.start >= '10:00' && s.end <= '18:00').toBe(true)
+  })
+
+  it('a deadline goal and reading chosen together share the extra day fairly', () => {
+    const r = plan(extra(withGoals([midterm, reading]), ['midterm', 'reading']), TODAY)
+    const mid = sum(goalSessions(r.sessions, 'midterm').filter((s) => s.date === SAT))
+    const read = sum(goalSessions(r.sessions, 'reading').filter((s) => s.date === SAT))
+    // the midterm takes at most half of the 4h weekend cap (in whole sessions: 90 of 120 min,
+    // since 30 left is under its 45 min minimum); reading gets the rest, beyond its 30 min target
+    expect(mid).toBeGreaterThanOrEqual(90)
+    expect(mid).toBeLessThanOrEqual(120)
+    expect(read).toBeGreaterThanOrEqual(120)
+    expect(mid + read).toBe(240)
+  })
+
+  it('“use it for” shares the time between several goals', () => {
+    const lang = { ...reading, id: 'lang', name: 'Spanish' }
+    const r = plan(extra(withGoals([reading, lang]), ['reading', 'lang']), TODAY)
+    const a = sum(goalSessions(r.sessions, 'reading').filter((s) => s.date === SAT))
+    const b = sum(goalSessions(r.sessions, 'lang').filter((s) => s.date === SAT))
+    expect(a + b).toBe(240)
+    expect(Math.abs(a - b)).toBeLessThanOrEqual(30)
+  })
+})

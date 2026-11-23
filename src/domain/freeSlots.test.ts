@@ -294,6 +294,12 @@ describe('availability & overrides', () => {
     expect(fmtFree(buildDay(input, MON))).toEqual(['16:00–17:00 high @home', '18:00–18:50 high @home', '19:55–23:00 normal @home'])
   })
 
+  it('a free override can carry its own energy', () => {
+    const input = scenario()
+    input.availabilityOverrides = [{ id: 'o', date: SAT, kind: 'free', start: '10:00', end: '12:00', energy: 'high' }]
+    expect(fmtFree(buildDay(input, SAT))).toEqual(['10:00–12:00 high @home'])
+  })
+
   it('a free override adds time with normal energy without changing tagged windows', () => {
     const input = scenario()
     input.availabilityOverrides = [{ id: 'o', date: SUN, kind: 'free', start: '13:00', end: '17:00' }]

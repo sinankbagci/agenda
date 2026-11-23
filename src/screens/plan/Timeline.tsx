@@ -66,6 +66,11 @@ export function Timeline({
               {work && session.note && session.status !== 'planned' && <span className="tl-note">📝 {session.note}</span>}
             </span>
             <span className="tl-badges">
+              {session?.pinned && (
+                <span className="badge pinned" title="Added by you">
+                  📌
+                </span>
+              )}
               {highlight === 'now' && <span className="badge now">Now</span>}
               {highlight === 'next' && <span className="badge next">Next</span>}
               {missed && <span className="badge st-missed">Missed</span>}

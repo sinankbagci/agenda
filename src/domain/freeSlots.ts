@@ -121,8 +121,8 @@ export function availabilityFor(input: SlotInput, date: ISODate, weekday: Weekda
     avail = o.start && o.end ? subtract(avail, [{ start: toMinutes(o.start), end: toMinutes(o.end) }]) : []
   }
   for (const o of overrides.filter((o) => o.kind === 'free' && o.start && o.end)) {
-    // extra free time; existing windows keep their energy tag
-    avail.push(...subtract([{ start: toMinutes(o.start!), end: toMinutes(o.end!), energy: 'normal' as Energy }], avail))
+    // extra free time (its own energy, default normal); existing windows keep their energy tag
+    avail.push(...subtract([{ start: toMinutes(o.start!), end: toMinutes(o.end!), energy: o.energy ?? ('normal' as Energy) }], avail))
   }
   return avail.sort((a, b) => a.start - b.start)
 }

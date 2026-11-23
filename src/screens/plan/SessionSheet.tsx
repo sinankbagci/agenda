@@ -27,6 +27,7 @@ export function SessionSheet({
   onSkip,
   onUndo,
   onNote,
+  onRemove,
 }: {
   session: Session
   goal: Goal | undefined
@@ -39,6 +40,8 @@ export function SessionSheet({
   onSkip: () => void
   onUndo: () => void
   onNote: (note: string) => void
+  /** Only for sessions the user placed (pinned). */
+  onRemove: () => void
 }) {
   const [note, setNote] = useState(session.note ?? '')
   const [partOpen, setPartOpen] = useState(mode === 'part')
@@ -78,6 +81,23 @@ export function SessionSheet({
             {session.actualMinutes !== undefined && session.status !== 'planned' ? ` (${formatDuration(session.actualMinutes)})` : ''}
           </strong>
         </p>
+
+        {session.pinned && actionsMode && (
+          <p className="pinned-info">
+            📌 Added by you at this time — the planner won’t move it.{' '}
+            {session.status === 'planned' && (
+              <button
+                type="button"
+                className="btn small link"
+                onClick={() => {
+                  if (window.confirm('Remove this session from your plan?')) onRemove()
+                }}
+              >
+                Remove from plan
+              </button>
+            )}
+          </p>
+        )}
 
         {last && actionsMode && (
           <div className="last-note">
