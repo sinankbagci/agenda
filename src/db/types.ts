@@ -53,6 +53,8 @@ export interface Goal {
   // book
   totalPages?: number
   pagesDone?: number
+  /** Book: page you were on, by date (one entry per day) — for "current pace". */
+  pageLog?: { date: ISODate; pages: number }[]
   // focus overrides
   pomodoroWork?: number
   pomodoroBreak?: number

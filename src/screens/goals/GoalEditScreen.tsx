@@ -5,8 +5,6 @@ import { repos } from '../../db/repositories'
 import { TEMPLATES, normalizeGoal, previewGoal, toDraft, validateGoal, type GoalDraft } from '../../domain/goals'
 import { Problems, Segmented, hasErrors } from '../../ui/form'
 import { GoalForm } from './GoalForm'
-import { GoalNotes } from './GoalNotes'
-import { TopicsSection } from './TopicsSection'
 import { TemplatePicker } from './TemplatePicker'
 
 /**
@@ -19,7 +17,7 @@ export function GoalEditScreen({ base = '/goals' }: { base?: string }) {
   const { id } = useParams()
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const isNew = id === 'new'
+  const isNew = !id || id === 'new'
   const templateKey = params.get('template')
   const today = format(new Date(), 'yyyy-MM-dd')
 
@@ -78,7 +76,8 @@ export function GoalEditScreen({ base = '/goals' }: { base?: string }) {
   async function remove() {
     if (!window.confirm(`Delete “${draft!.name}”? Its planned sessions are removed; finished sessions stay in your history.`)) return
     await repos.goals.remove(id!)
-    navigate(-1)
+    // the goal's own page no longer exists: go to the list, not back
+    navigate(base === '/goals' ? '/goals' : '/onboarding/goal', { replace: true })
   }
 
   return (
@@ -98,8 +97,6 @@ export function GoalEditScreen({ base = '/goals' }: { base?: string }) {
         </div>
       )}
       <GoalForm draft={draft} set={setDraft} today={today} isNew={isNew} />
-      {!isNew && draft.type === 'deadline' && <TopicsSection goalId={id!} totalHours={draft.totalHours ?? 0} />}
-      {!isNew && <GoalNotes goalId={id!} />}
       <div className="form-footer">
         {preview && <p className="preview">{preview}</p>}
         <Problems check={tried ? check : { errors: [], warnings: check.warnings }} />

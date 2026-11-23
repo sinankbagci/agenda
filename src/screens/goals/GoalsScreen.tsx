@@ -11,6 +11,7 @@ export const goalOrder = (a: Goal, b: Goal) =>
 
 export function GoalsScreen() {
   const goals = useLiveQuery(() => repos.goals.all(), [])
+  const sessions = useLiveQuery(() => repos.sessions.all(), [], [])
   const today = format(new Date(), 'yyyy-MM-dd')
   if (!goals) return null
   const active = goals.filter((g) => g.active).sort(goalOrder)
@@ -38,7 +39,7 @@ export function GoalsScreen() {
       {active.length > 0 && (
         <div className="goal-list">
           {active.map((g) => (
-            <GoalCard key={g.id} goal={g} to={`/goals/${g.id}`} today={today} />
+            <GoalCard key={g.id} goal={g} to={`/goals/${g.id}`} today={today} sessions={sessions} />
           ))}
         </div>
       )}
@@ -48,7 +49,7 @@ export function GoalsScreen() {
           <p className="muted">Paused goals aren’t planned until you resume them.</p>
           <div className="goal-list">
             {paused.map((g) => (
-              <GoalCard key={g.id} goal={g} to={`/goals/${g.id}`} today={today} />
+              <GoalCard key={g.id} goal={g} to={`/goals/${g.id}`} today={today} sessions={sessions} />
             ))}
           </div>
         </>

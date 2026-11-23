@@ -117,7 +117,7 @@ const TYPE_FIELDS: Record<GoalType, (keyof GoalDraft)[]> = {
   deadline: ['deadline', 'totalHours', 'reviewDays'],
   recurring: ['perWeek', 'sessionLength', 'noConsecutiveDays'],
   ongoing: ['minutesPerDay', 'minutesPerWeek', 'endDate'],
-  book: ['totalPages', 'pagesDone', 'minutesPerDay', 'deadline'],
+  book: ['totalPages', 'pagesDone', 'minutesPerDay', 'deadline', 'pageLog'],
 }
 const ALL_TYPE_FIELDS = [...new Set(Object.values(TYPE_FIELDS).flat())]
 const POMODORO_FIELDS = ['pomodoroWork', 'pomodoroBreak', 'pomodoroLongBreak', 'cyclesBeforeLong'] as const
