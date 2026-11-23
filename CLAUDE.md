@@ -44,7 +44,7 @@ Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's fe
 13. Learning from the log  ← done
 14. Weekly review  ← done (incl. the “+ Add” polish and one-off tasks)
 15. ~~Apple Calendar `.ics` export~~  ← skipped at the user's request (the stored `calendarAlertMin` setting is kept but hidden in Settings)
-16. Quick add parser + tests
+16. Quick add parser + tests  ← done
 17. Year in review
 18. Polish
 
@@ -160,3 +160,9 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - `lastWeekSummary`: time per goal/category (sessions + linked logs), sessions done/partial/skipped/missed of planned, streak changes (after = as of the review week's Monday; before = as of last week's Monday for weekly streaks, the Sunday before for daily ones), deadline goals behind / at risk, average check-in energy/mood. `nextWeekPreview`: planned minutes per day, deadlines/tasks in the next two weeks.
 - `streak()` only counts sessions/logs up to its `today` (needed for "as of" questions) but caps weekly targets by everything planned that week.
 - `/review`: quick adjustments save immediately (priority, pause/resume, deadline hours, busy/free time in that week) and are recorded as plain notes in `WeeklyReview.adjustments`; "Confirm week" stores the review and goes to Today.
+
+## Quick add (src/domain/quickAdd.ts, src/screens/goals/QuickAdd.tsx)
+
+- `parseQuickAdd(text, today, locations)` → `{ kind, name, date, minutes, perWeek, per, pages, locationId, category, missing }`. Tokens are taken out of the text in order (date → pages → "N× week" → duration → daily/weekly → place, "at <place>" preferred); what's left is the name. Dates: ISO, "Dec 12", "12 December", today/tomorrow, weekday names (a bare weekday on that weekday = next week); month/day without a year = next occurrence.
+- Kind: pages or leading "book" → book; N× a week → recurring; daily / a week → ongoing; task words (homework, assignment, task…) or due today/tomorrow → one-off task; a date (or ≥ 2 h) → deadline; else unknown.
+- UI: field at the top of Goals with a live `describeQuick` preview; Continue → `/goals/new?quick=…` (GoalEditScreen parses with `quickToDraft` and shows what still needs filling), tasks → `AddToDaySheet` with `initialTask` (`quickToTask`), unknown → template picker keeping the name (`?name=`).

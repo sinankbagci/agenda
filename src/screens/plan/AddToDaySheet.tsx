@@ -49,14 +49,27 @@ const nextDay = (d: string) => format(addDays(parseISO(d), 1), 'yyyy-MM-dd')
  * or extra free time over some days with optional "use it for" goals. Saving re-plans;
  * if it touches today, today is re-planned too (the user asked for it explicitly).
  */
-export function AddToDaySheet({ date, today, onClose, onSaved }: { date: string; today: string; onClose: () => void; onSaved: (date: string) => void }) {
+export function AddToDaySheet({
+  date,
+  today,
+  onClose,
+  onSaved,
+  initialTask,
+}: {
+  date: string
+  today: string
+  onClose: () => void
+  onSaved: (date: string) => void
+  /** Pre-filled from Quick add. */
+  initialTask?: TaskDraft
+}) {
   const [tab, setTab] = useState<Tab>('task')
   const [tried, setTried] = useState(false)
   const goals = useLiveQuery(() => repos.goals.all(), [], [] as Goal[])
   const fixedBlocks = useLiveQuery(() => repos.fixedBlocks.all(), [], [])
 
   const [event, setEvent] = useState<EventDraft>({ title: '', date, start: '13:00', end: '15:00' })
-  const [task, setTask] = useState<TaskDraft>({ title: '', minutes: 60, doBy: date, category: 'Study', focus: 'demanding' })
+  const [task, setTask] = useState<TaskDraft>(initialTask ?? { title: '', minutes: 60, doBy: date, category: 'Study', focus: 'demanding' })
   const [session, setSession] = useState<GoalSessionDraft>({ goalId: '', date, start: '10:00', end: '11:00' })
   const weekendStart = parseISO(date).getDay() === 6
   const [extra, setExtra] = useState<ExtraTimeDraft>({
