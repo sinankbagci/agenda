@@ -6,6 +6,8 @@ import { SettingsScreen } from '../screens/SettingsScreen'
 import { SettingsSectionPage } from '../screens/setup/SettingsSectionPage'
 import { FixedBlockEditScreen } from '../screens/setup/FixedBlockEditScreen'
 import { Onboarding } from '../screens/onboarding/Onboarding'
+import { GoalsScreen } from '../screens/goals/GoalsScreen'
+import { GoalEditScreen } from '../screens/goals/GoalEditScreen'
 import { useSettings } from '../ui/form'
 
 /** Main layout: sidebar (landscape) / tab bar (portrait). */
@@ -61,10 +63,13 @@ export function App() {
   return (
     <Routes>
       <Route path="/onboarding/fixed/:id" element={<div className="onboarding"><FixedBlockEditScreen /></div>} />
+      <Route path="/onboarding/goal/:id" element={<div className="onboarding"><GoalEditScreen base="/onboarding/goal" /></div>} />
       <Route path="/onboarding/:step?" element={<Onboarding />} />
       <Route element={<Shell />}>
         <Route path="/" element={<Navigate to="/today" replace />} />
-        {NAV_ITEMS.filter((i) => i.path !== '/settings').map((item) => (
+        <Route path="/goals" element={<GoalsScreen />} />
+        <Route path="/goals/:id" element={<GoalEditScreen />} />
+        {NAV_ITEMS.filter((i) => i.path !== '/settings' && i.path !== '/goals').map((item) => (
           <Route key={item.path} path={item.path} element={<Placeholder title={item.label} />} />
         ))}
         <Route path="/settings" element={<SettingsScreen />} />

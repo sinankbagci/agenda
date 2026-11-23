@@ -1,13 +1,21 @@
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { format } from 'date-fns'
+import { GoalCard } from '../goals/GoalCard'
+import { goalOrder } from '../goals/GoalsScreen'
+import { TemplatePicker } from '../goals/TemplatePicker'
 import { repos } from '../../db/repositories'
 import { ONBOARDING_ORDER, SECTIONS, type SectionKey } from '../setup/sections'
 
-const STEPS = ['welcome', ...ONBOARDING_ORDER, 'done'] as const
+// SPEC §5: sleep → fixed program → meals → locations → availability → first goal
+const STEPS = ['welcome', ...ONBOARDING_ORDER, 'goal', 'done'] as const
+const STEP_COUNT = ONBOARDING_ORDER.length + 1
 
 /** First-run walkthrough of Setup in SPEC order. Everything can be changed later in Settings. */
 export function Onboarding() {
   const { step = 'welcome' } = useParams()
   const navigate = useNavigate()
+  const goals = useLiveQuery(() => repos.goals.all(), [], [])
   const index = STEPS.indexOf(step as (typeof STEPS)[number])
   if (index < 0) return <Navigate to="/onboarding/welcome" replace />
 
@@ -29,6 +37,28 @@ export function Onboarding() {
         <p className="muted">Everything stays on this iPad. Nothing is sent anywhere.</p>
       </>
     )
+  } else if (step === 'goal') {
+    const today = format(new Date(), 'yyyy-MM-dd')
+    body = (
+      <>
+        <p className="step-count">
+          Step {STEP_COUNT} of {STEP_COUNT}
+        </p>
+        <h1>{goals.length ? 'Your goals' : 'Your first goal'}</h1>
+        <p className="muted intro">
+          What do you want to make time for? Pick a starting point. You can add more goals now or later on the Goals tab.
+        </p>
+        {goals.length > 0 && (
+          <div className="goal-list">
+            {[...goals].sort(goalOrder).map((g) => (
+              <GoalCard key={g.id} goal={g} to={`/onboarding/goal/${g.id}`} today={today} />
+            ))}
+          </div>
+        )}
+        {goals.length > 0 && <h2>Add another</h2>}
+        <TemplatePicker base="/onboarding/goal/new" replace={false} />
+      </>
+    )
   } else if (step === 'done') {
     body = (
       <>
@@ -36,7 +66,11 @@ export function Onboarding() {
         <p className="intro">
           Daily limits, rules and focus-timer defaults start with sensible values — adjust them anytime in Settings.
         </p>
-        <p className="muted">Next, you’ll add your goals on the Goals tab.</p>
+        <p className="muted">
+          {goals.length
+            ? 'Your plan is built from your goals and free time. Add or change goals anytime on the Goals tab.'
+            : 'Add goals anytime on the Goals tab — the planner fits them into your free time.'}
+        </p>
       </>
     )
   } else {
@@ -44,7 +78,7 @@ export function Onboarding() {
     body = (
       <>
         <p className="step-count">
-          Step {index} of {ONBOARDING_ORDER.length}
+          Step {index} of {STEP_COUNT}
         </p>
         <h1>{title}</h1>
         <p className="muted intro">{intro}</p>
