@@ -29,7 +29,8 @@ export function GoalEditScreen({ base = '/goals' }: { base?: string }) {
     setTried(false)
     if (isNew) {
       const t = TEMPLATES.find((x) => x.key === templateKey)
-      setDraft(t ? t.make(today) : null)
+      const name = params.get('name') // e.g. a book from the reading list
+      setDraft(t ? { ...t.make(today), ...(name ? { name: name.slice(0, 100) } : {}) } : null)
       return
     }
     repos.goals.get(id!).then((g) => (g ? setDraft(toDraft(g)) : setMissing(true)))

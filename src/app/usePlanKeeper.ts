@@ -17,6 +17,7 @@ async function planInputsSignature(): Promise<string> {
     db.travelTimes.toArray(),
     db.rules.toArray(),
     db.topics.toArray(),
+    db.logEntries.toArray(),
   ])
   // fields that don't affect planning mustn't trigger a re-plan
   const { lastBackupAt: _b, onboardingDone: _o, ...planSettings } = settings ?? ({} as Record<string, unknown>)

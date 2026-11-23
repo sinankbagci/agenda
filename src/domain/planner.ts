@@ -17,7 +17,8 @@
  * around its session ("goals pull travel with them").
  */
 import { addDays, differenceInCalendarDays, format, parseISO, startOfWeek } from 'date-fns'
-import type { Goal, ISODate, Rule, Session, Settings, Topic } from '../db/types'
+import type { Goal, ISODate, LogEntry, Rule, Session, Settings, Topic } from '../db/types'
+import { loggedMinutes, loggedSessions } from './log'
 import { buildDay, makeTravel, type DayLayout, type FreeSlot, type SlotInput } from './freeSlots'
 import { intersect, subtract, type Range } from './ranges'
 import { formatDuration, fromMinutes, toMinutes } from './time'
@@ -33,6 +34,8 @@ export interface PlanState {
   sessions: readonly Session[]
   /** Topics of deadline goals (SPEC 3.6). */
   topics?: readonly Topic[]
+  /** Activity log: entries linked to a goal count toward it (SPEC 4.3). */
+  logs?: readonly LogEntry[]
 }
 
 export interface PlanOptions {
@@ -355,6 +358,8 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
       if (s.status === 'done' || s.status === 'partial') m += countedMinutes(s)
       else if (s.status === 'planned' && ((s.date >= today && s.date < from) || (s.date >= from && s.frozen))) m += duration(s)
     }
+    // logged activity linked to the goal counts as done study time
+    if (kinds.includes('goal')) m += loggedMinutes(goal.id, state.logs, inRange)
     return m
   }
 
@@ -552,7 +557,8 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
     const goalDays = new Set(
       state.sessions
         .filter((s) => s.goalId === g.id && s.kind === 'goal' && (s.status === 'done' || s.status === 'partial' || (isKept(s) && s.status !== 'skipped')))
-        .map((s) => s.date),
+        .map((s) => s.date)
+        .concat((state.logs ?? []).filter((l) => l.goalId === g.id && (l.minutes ?? 0) > 0).map((l) => l.date)),
     )
     for (let week = firstWeek; week <= to; week = addDaysIso(week, 7)) {
       const weekEnd = addDaysIso(week, 6)
@@ -563,7 +569,7 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
           s.kind === 'goal' &&
           inWeek(s.date) &&
           (s.status === 'done' || s.status === 'partial' || (s.status === 'planned' && ((s.date >= today && s.date < from) || (s.date >= from && s.frozen)))),
-      ).length
+      ).length + loggedSessions(g.id, state.logs, inWeek) // a logged run counts as a session
       const need = g.perWeek! - already
       if (need <= 0) continue
       const cut = weekEnd > to // horizon ends mid-week: place what fits, no warning

@@ -3,7 +3,8 @@
  * Progress is session-based (done / partial actual minutes; Focus Mode writes into sessions).
  */
 import { addDays, differenceInCalendarDays, format, parseISO, startOfWeek } from 'date-fns'
-import type { Goal, ISODate, Session } from '../db/types'
+import type { Goal, ISODate, LogEntry, Session } from '../db/types'
+import { loggedMinutes, loggedSessions } from './log'
 import { countedMinutes } from './planner'
 import { RAMP_END, RAMP_START } from './planner'
 
@@ -20,8 +21,8 @@ const isWork = (s: Session) => s.kind === 'goal' || s.kind === 'review'
 const ofGoal = (sessions: readonly Session[], goalId: string) => sessions.filter((s) => s.goalId === goalId && isWork(s))
 
 /** All time spent on a goal (study + reviews), in minutes. */
-export function totalInvested(goalId: string, sessions: readonly Session[]): number {
-  return ofGoal(sessions, goalId).reduce((m, s) => m + countedMinutes(s), 0)
+export function totalInvested(goalId: string, sessions: readonly Session[], logs?: readonly LogEntry[]): number {
+  return ofGoal(sessions, goalId).reduce((m, s) => m + countedMinutes(s), 0) + loggedMinutes(goalId, logs)
 }
 
 // ---------- Deadline goals ----------
@@ -46,11 +47,12 @@ export interface DeadlineProgress {
  * (created, or its first session if earlier) to the review day(s). Slack: 10% or 30 min.
  * `shortfallMinutes` comes from the last plan's warning — if the rest can't fit, it's at risk.
  */
-export function deadlineProgress(goal: Goal, sessions: readonly Session[], today: ISODate, shortfallMinutes = 0): DeadlineProgress {
+export function deadlineProgress(goal: Goal, sessions: readonly Session[], today: ISODate, shortfallMinutes = 0, logs?: readonly LogEntry[]): DeadlineProgress {
   const totalMinutes = Math.round((goal.totalHours ?? 0) * 60)
-  const doneMinutes = ofGoal(sessions, goal.id)
-    .filter((s) => s.kind === 'goal')
-    .reduce((m, s) => m + countedMinutes(s), 0)
+  const doneMinutes =
+    ofGoal(sessions, goal.id)
+      .filter((s) => s.kind === 'goal')
+      .reduce((m, s) => m + countedMinutes(s), 0) + loggedMinutes(goal.id, logs)
   const deadline = goal.deadline ?? today
   const daysLeft = Math.max(0, days(today, deadline))
   const first = ofGoal(sessions, goal.id).map((s) => s.date).sort()[0]
@@ -114,7 +116,7 @@ function runs(periods: Period[]): { current: number; best: number } {
  * The target is capped by what was actually planned that day/week (if only 3 of 4 workouts
  * fitted, doing those 3 keeps the streak).
  */
-export function streak(goal: Goal, sessions: readonly Session[], today: ISODate): Streak | undefined {
+export function streak(goal: Goal, sessions: readonly Session[], today: ISODate, logs?: readonly LogEntry[]): Streak | undefined {
   const mine = ofGoal(sessions, goal.id)
   const created = iso(new Date(goal.createdAt))
   const firstSession = mine.map((s) => s.date).sort()[0]
@@ -132,16 +134,18 @@ export function streak(goal: Goal, sessions: readonly Session[], today: ISODate)
       const current = w === weekOf(today)
       let met: boolean
       let neutral: boolean
+      const inRange = (d: ISODate) => d >= w && d <= add(w, 6)
+      const loggedCount = loggedSessions(goal.id, logs, inRange)
       if (goal.type === 'recurring') {
-        const target = Math.min(goal.perWeek ?? 1, inWeek.length || (goal.perWeek ?? 1))
-        const done = inWeek.filter((s) => s.status === 'done').length
+        const target = Math.min(goal.perWeek ?? 1, inWeek.length + loggedCount || (goal.perWeek ?? 1))
+        const done = inWeek.filter((s) => s.status === 'done').length + loggedCount
         met = done >= target
-        neutral = inWeek.length === 0
+        neutral = inWeek.length === 0 && loggedCount === 0
       } else {
         const plannedMin = inWeek.reduce((m, s) => m + planned(s), 0)
         const target = Math.min(goal.minutesPerWeek ?? 0, plannedMin || (goal.minutesPerWeek ?? 0))
-        met = inWeek.reduce((m, s) => m + countedMinutes(s), 0) >= target
-        neutral = inWeek.length === 0
+        met = inWeek.reduce((m, s) => m + countedMinutes(s), 0) + loggedMinutes(goal.id, logs, inRange) >= target
+        neutral = inWeek.length === 0 && loggedCount === 0
       }
       periods.push({ key: w, met: neutral || (current && !met) ? null : met })
     }
@@ -151,10 +155,11 @@ export function streak(goal: Goal, sessions: readonly Session[], today: ISODate)
   for (let d = start; d <= today; d = add(d, 1)) {
     const onDay = mine.filter((s) => s.date === d)
     const plannedMin = onDay.reduce((m, s) => m + planned(s), 0)
-    const done = onDay.reduce((m, s) => m + countedMinutes(s), 0)
+    const logged = loggedMinutes(goal.id, logs, (x) => x === d)
+    const done = onDay.reduce((m, s) => m + countedMinutes(s), 0) + logged
     const target = Math.min(goal.minutesPerDay!, plannedMin || goal.minutesPerDay!)
     const met = done >= target
-    const neutral = onDay.length === 0
+    const neutral = onDay.length === 0 && logged === 0
     periods.push({ key: d, met: neutral || (d === today && !met) ? null : met })
   }
   return { unit: 'day', ...runs(periods) }
@@ -163,12 +168,14 @@ export function streak(goal: Goal, sessions: readonly Session[], today: ISODate)
 // ---------- History & rates ----------
 
 /** Minutes per Mon–Sun week for the last `weeks` weeks, oldest first (the detail chart). */
-export function weeklyHistory(goalId: string, sessions: readonly Session[], today: ISODate, weeks = 12): { weekStart: ISODate; minutes: number }[] {
+export function weeklyHistory(goalId: string, sessions: readonly Session[], today: ISODate, weeks = 12, logs?: readonly LogEntry[]): { weekStart: ISODate; minutes: number }[] {
   const mine = ofGoal(sessions, goalId)
   const last = weekOf(today)
   return Array.from({ length: weeks }, (_, i) => {
     const w = add(last, -7 * (weeks - 1 - i))
-    const minutes = mine.filter((s) => s.date >= w && s.date <= add(w, 6)).reduce((m, s) => m + countedMinutes(s), 0)
+    const minutes =
+      mine.filter((s) => s.date >= w && s.date <= add(w, 6)).reduce((m, s) => m + countedMinutes(s), 0) +
+      loggedMinutes(goalId, logs, (d) => d >= w && d <= add(w, 6))
     return { weekStart: w, minutes: Math.round(minutes) }
   })
 }

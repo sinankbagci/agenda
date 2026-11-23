@@ -509,3 +509,34 @@ describe('topics & spaced review (SPEC 3.6)', () => {
     expect(spaced.every((s) => s.date < '2026-12-11')).toBe(true)
   })
 })
+
+describe('activity log counts toward goals (SPEC 4.3)', () => {
+  const log = (over: Partial<import('../db/types').LogEntry>) => ({ id: crypto.randomUUID(), date: '2026-11-22', type: 'study', title: 'Extra study', ...over })
+
+  it('logged study reduces what is left of a deadline goal', () => {
+    const r = plan(withGoals([midterm], { logs: [log({ goalId: 'midterm', minutes: 120 })] }), TODAY)
+    const planned = sum(goalSessions(r.sessions, 'midterm'))
+    expect(planned).toBeGreaterThanOrEqual(900 - 120)
+    expect(planned).toBeLessThan(900 - 120 + 45)
+  })
+
+  it('reading logged today covers today’s daily target', () => {
+    const r = plan(withGoals([reading], { logs: [log({ goalId: 'reading', type: 'read', date: TODAY, minutes: 30 })] }), TODAY)
+    expect(goalSessions(r.sessions, 'reading').some((s) => s.date === TODAY)).toBe(false)
+    expect(goalSessions(r.sessions, 'reading').some((s) => s.date === '2026-11-24')).toBe(true)
+  })
+
+  it('a logged run counts as one of the week’s workouts (and its day needs rest after)', () => {
+    const state = weekendToo(withGoals([{ ...workout, perWeek: 3 }], { logs: [log({ goalId: 'workout', type: 'exercise', date: TODAY, minutes: 40 })] }))
+    const r = plan(state, TODAY, { from: '2026-11-24' })
+    const week = [...byDate(goalSessions(r.sessions, 'workout')).keys()].filter((d) => d <= '2026-11-29')
+    expect(week).toHaveLength(2)
+    expect(week).not.toContain('2026-11-24') // rest day after the run
+  })
+
+  it('entries not linked to a goal change nothing', () => {
+    const plain = plan(withGoals([midterm]), TODAY)
+    const withLog = plan(withGoals([midterm], { logs: [log({ minutes: 120 })] }), TODAY)
+    expect(withLog.sessions).toEqual(plain.sessions)
+  })
+})

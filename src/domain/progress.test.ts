@@ -130,3 +130,21 @@ describe('books', () => {
     expect(bookProgress(book, '2026-11-21').pace).toBeUndefined() // not enough page updates yet
   })
 })
+
+describe('logged activity in progress', () => {
+  const l = (over: Partial<import('../db/types').LogEntry>) => ({ id: crypto.randomUUID(), date: '2026-11-20', type: 'study', title: 'x', ...over })
+  it('counts toward deadline hours, total time and the weekly chart', () => {
+    const g: Goal = { ...midterm, createdAt: created('2026-11-16') }
+    const logs = [l({ goalId: 'midterm', minutes: 90 }), l({ goalId: 'other', minutes: 500 })]
+    expect(deadlineProgress(g, [s('midterm', '2026-11-19', 'done')], '2026-11-23', 0, logs).doneMinutes).toBe(150)
+    expect(totalInvested('midterm', [], logs)).toBe(90)
+    expect(weeklyHistory('midterm', [], '2026-11-23', 2, logs)).toEqual([{ weekStart: '2026-11-16', minutes: 90 }, { weekStart: '2026-11-23', minutes: 0 }])
+  })
+  it('keeps streaks going: a logged run is a session, logged reading fills the day', () => {
+    const w: Goal = { ...workout, perWeek: 2, createdAt: created('2026-11-16') }
+    expect(streak(w, [s('workout', '2026-11-16', 'done')], '2026-11-23', [l({ goalId: 'workout', minutes: 40, date: '2026-11-19' })])).toEqual({ unit: 'week', current: 1, best: 1 })
+    const r: Goal = { ...reading, createdAt: created('2026-11-21') }
+    // Saturday: nothing planned, but 30 min logged → counts as a met day
+    expect(streak(r, [], '2026-11-23', [l({ goalId: 'reading', minutes: 30, date: '2026-11-21' })])).toEqual({ unit: 'day', current: 1, best: 1 })
+  })
+})

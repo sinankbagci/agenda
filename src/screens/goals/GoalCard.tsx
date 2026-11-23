@@ -4,10 +4,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { repos } from '../../db/repositories'
 import { FOCUS_LABEL, GOAL_TYPES, PRIORITY_LABEL, describeGoal } from '../../domain/goals'
 import { topicProgress } from '../../domain/topics'
-import type { Session } from '../../db/types'
+import type { LogEntry, Session } from '../../db/types'
 import { CardProgress } from './GoalProgress'
 
-export function GoalCard({ goal, to, today, sessions = [] }: { goal: Goal; to: string; today: string; sessions?: readonly Session[] }) {
+export function GoalCard({ goal, to, today, sessions = [], logs = [] }: { goal: Goal; to: string; today: string; sessions?: readonly Session[]; logs?: readonly LogEntry[] }) {
   const topics = useLiveQuery(() => repos.topics.byGoal(goal.id), [goal.id], [])
   const tp = topicProgress(topics)
   return (
@@ -18,7 +18,7 @@ export function GoalCard({ goal, to, today, sessions = [] }: { goal: Goal; to: s
       <span className="goal-main">
         <strong className="goal-name">{goal.name}</strong>
         <span className="muted">{describeGoal(goal, today)}</span>
-        <CardProgress goal={goal} sessions={sessions.filter((s) => s.goalId === goal.id)} today={today} />
+        <CardProgress goal={goal} sessions={sessions.filter((s) => s.goalId === goal.id)} today={today} logs={logs} />
         {tp.total > 0 && (
           <span className="topic-progress">
             <span className="topic-bar" aria-hidden>
