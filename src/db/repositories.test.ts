@@ -116,6 +116,22 @@ describe('locations & travel times', () => {
     expect(await r.travelTimes.all()).toHaveLength(2) // campus<->gym only
     expect(await r.travelTimes.get(campus.id, gym.id)).toBe(10)
   })
+
+  it('removing a location clears references to it everywhere', async () => {
+    const gym = await r.locations.add({ name: 'Gym' })
+    const campus = await r.locations.add({ name: 'Campus' })
+    const block = await r.fixedBlocks.add({ title: 'Class', rule: { kind: 'weekly', weekdays: [1] }, start: '09:00', end: '15:00', locked: true, locationId: campus.id })
+    const meal = await r.mealRules.add({ name: 'Lunch', windowStart: '12:00', windowEnd: '14:30', duration: 30, locationId: gym.id })
+    const goal = await r.goals.add(goalInput({ type: 'recurring', locationId: gym.id }))
+    await r.settings.update({ homeLocationId: gym.id })
+
+    await r.locations.remove(gym.id)
+
+    expect((await r.mealRules.get(meal.id))!.locationId).toBeUndefined()
+    expect((await r.goals.get(goal.id))!.locationId).toBeUndefined()
+    expect((await r.fixedBlocks.get(block.id))!.locationId).toBe(campus.id)
+    expect((await r.settings.get()).homeLocationId).toBeUndefined()
+  })
 })
 
 describe('settings', () => {

@@ -7,6 +7,7 @@ import type {
   CheckIn,
   EpochMs,
   ISODate,
+  NewRow,
   Settings,
   Stats,
   Topic,
@@ -14,8 +15,7 @@ import type {
   WeeklyReview,
 } from './types'
 
-/** Omit that works across union types (e.g. Rule). */
-export type NewRow<T> = T extends unknown ? Omit<T, 'id'> : never
+export type { NewRow } from './types'
 export type Changes<T> = Partial<NewRow<T>>
 
 export const newId = (): string => crypto.randomUUID()
@@ -95,11 +95,26 @@ export function createRepos(db: AgendaDB) {
 
   const locations = {
     ...entityRepo(db.locations),
-    /** Delete a location and every travel time that mentions it. */
+    /**
+     * Delete a location, every travel time that mentions it, and any reference to it
+     * (fixed blocks, meals, goals, home location) — those just lose their location.
+     */
     async remove(id: string): Promise<void> {
-      await db.transaction('rw', [db.locations, db.travelTimes], async () => {
+      await db.transaction('rw', [db.locations, db.travelTimes, db.fixedBlocks, db.mealRules, db.goals, db.settings], async () => {
         await db.travelTimes.where('fromId').equals(id).delete()
         await db.travelTimes.where('toId').equals(id).delete()
+        for (const table of [db.fixedBlocks, db.mealRules, db.goals] as const) {
+          await (table as typeof db.mealRules)
+            .filter((row) => row.locationId === id)
+            .modify((row) => {
+              delete row.locationId
+            })
+        }
+        const s = await db.settings.get('settings')
+        if (s?.homeLocationId === id) {
+          delete s.homeLocationId
+          await db.settings.put(s)
+        }
         await db.locations.delete(id)
       })
     },

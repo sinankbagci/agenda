@@ -31,7 +31,7 @@ Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's fe
 
 1. Scaffold + PWA + routing + layout + deploy  ← done
 2. Data layer (Dexie schema, typed repos, export/import)  ← done
-3. Setup screens + onboarding
+3. Setup screens + onboarding  ← done (onboarding's “first goal” step comes with step 5)
 4. Free-slot builder (pure) + tests
 5. Goals CRUD
 6. Planner v1 (pure) + tests
@@ -64,3 +64,13 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - `repositories.ts` — `createRepos(db)`; the app uses the `repos` singleton, tests pass a fresh `createDb('test-…')`. UI code goes through repos, not raw tables. Cascades: deleting a goal removes its topics, stats and still-planned sessions but keeps history; deleting a location removes its travel times; travel times are stored in both directions.
 - Backup: `backup.ts` is pure (format + validation), `backupDb.ts` does the I/O. Import REPLACES all data in one transaction (all or nothing). `meta` is device-only and never exported. `lastBackupAt` is only set after the file was actually shared/saved.
 - Settings is a single row (`id: 'settings'`); `repos.settings.get()` always merges over `DEFAULT_SETTINGS`, so adding a new setting only needs a default.
+
+## UI conventions (src/ui, src/screens)
+
+- Read data with `useLiveQuery` (dexie-react-hooks) so screens update automatically; write through `repos`.
+- Validation lives in pure functions in `src/domain` (e.g. `setupValidation.ts`, tested) returning `{ errors, warnings }`. Errors block saving; warnings only inform.
+- `EditableList` is the standard list → inline form (Save / Cancel / Delete) pattern. Settings-backed fields auto-save via `useSettingsDraft` when valid.
+- Fixed blocks are only edited on their own screen (`FixedBlockEditScreen`), per SPEC 2.2.
+- Setup sections are defined once in `screens/setup/sections.tsx` and reused by Settings and onboarding (`ONBOARDING_ORDER` follows SPEC §5).
+- Inputs use native iOS controls (`type="time"`, `type="date"`, `inputMode` numeric) at ≥16px font so Safari doesn't zoom.
+- First-run redirect to onboarding is decided once at launch in `App.tsx` (not reactively — that caused a bounce-back bug).
