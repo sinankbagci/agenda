@@ -206,6 +206,18 @@ export interface FocusInterval {
   minutes: number
 }
 
+export interface FocusConfig {
+  /** Minutes. */
+  work: number
+  shortBreak: number
+  longBreak: number
+  cyclesBeforeLong: number
+}
+
+/**
+ * The one running Focus timer. Pure timestamps — remaining time is always computed from
+ * `phaseStartedAt` + `phaseLength` (+ `pausedAt`), never counted (Safari suspends JS).
+ */
 export interface ActiveTimer {
   id: 'active'
   goalId: string
@@ -215,8 +227,15 @@ export interface ActiveTimer {
   phaseStartedAt: EpochMs
   /** Minutes. */
   phaseLength: number
+  /** 1-based number of the current work cycle. */
   cycle: number
   pausedAt?: EpochMs
+  /** When this focus run started (its intervals have startedAt ≥ this). */
+  runStartedAt: EpochMs
+  /** Cycle lengths for this run (goal override or defaults, fixed at start). */
+  config: FocusConfig
+  /** Today's sessions this run fills, in order, with the minutes they already had. */
+  targets: { id: string; prior: number }[]
 }
 
 export interface LogEntry {

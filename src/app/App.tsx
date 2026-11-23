@@ -12,6 +12,8 @@ import { DayScreen } from '../screens/plan/DayScreen'
 import { WeekScreen } from '../screens/plan/WeekScreen'
 import { MonthScreen } from '../screens/plan/MonthScreen'
 import { usePlanKeeper } from './usePlanKeeper'
+import { FocusScreen } from '../screens/focus/FocusScreen'
+import { FocusPill } from '../screens/focus/FocusPill'
 import { useSettings } from '../ui/form'
 
 /** Main layout: sidebar (landscape) / tab bar (portrait). */
@@ -33,6 +35,7 @@ function Shell() {
       <main className="main">
         <Outlet />
       </main>
+      <FocusPill />
 
       <nav className="tabbar" aria-label="Tabs">
         {NAV_ITEMS.filter((i) => TAB_BAR_PATHS.includes(i.path)).map((item) => (
@@ -79,9 +82,10 @@ export function App() {
         <Route path="/week/:date" element={<WeekScreen />} />
         <Route path="/month" element={<MonthScreen />} />
         <Route path="/month/:month" element={<MonthScreen />} />
+        <Route path="/focus" element={<FocusScreen />} />
         <Route path="/goals" element={<GoalsScreen />} />
         <Route path="/goals/:id" element={<GoalEditScreen />} />
-        {NAV_ITEMS.filter((i) => !['/settings', '/goals', '/today', '/week', '/month'].includes(i.path)).map((item) => (
+        {NAV_ITEMS.filter((i) => !['/settings', '/goals', '/today', '/week', '/month', '/focus'].includes(i.path)).map((item) => (
           <Route key={item.path} path={item.path} element={<Placeholder title={item.label} />} />
         ))}
         <Route path="/settings" element={<SettingsScreen />} />

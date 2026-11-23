@@ -28,6 +28,7 @@ export function SessionSheet({
   onUndo,
   onNote,
   onRemove,
+  onFocus,
 }: {
   session: Session
   goal: Goal | undefined
@@ -42,6 +43,8 @@ export function SessionSheet({
   onNote: (note: string) => void
   /** Only for sessions the user placed (pinned). */
   onRemove: () => void
+  /** Start Focus Mode on this session (today, not finished). */
+  onFocus: () => void
 }) {
   const [note, setNote] = useState(session.note ?? '')
   const [partOpen, setPartOpen] = useState(mode === 'part')
@@ -107,8 +110,13 @@ export function SessionSheet({
 
         {actionsMode && (
           <div className="sheet-actions">
+            {session.date === today && (session.status === 'planned' || session.status === 'partial') && (
+              <button type="button" className="btn primary big" onClick={onFocus}>
+                ◷ Focus
+              </button>
+            )}
             {session.status !== 'done' && canComplete(session, today) && (
-              <button type="button" className="btn primary big" onClick={onComplete}>
+              <button type="button" className="btn big" onClick={onComplete}>
                 ✓ Done
               </button>
             )}

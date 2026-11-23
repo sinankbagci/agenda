@@ -37,7 +37,7 @@ Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's fe
 6. Planner v1 (pure) + tests  ← done
 7. Today / Week / Month views  ← done
 8. Session actions  ← done
-9. Focus Mode (timestamp timer) + tests
+9. Focus Mode (timestamp timer) + tests  ← done
 10. Topics & spaced review + tests
 11. Progress & streaks
 12. Activity log, check-in, backlog lists
@@ -118,3 +118,10 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - **Extra free time** → one `AvailabilityOverride` (kind `free`) per day with `energy` and optional `boostGoalIds` (“use it for”). Planner: deadline goals pull work into the boosted windows first (fair share of the day's cap among boosted goals; those days leave the ramp), ongoing/book goals fill the windows beyond their target after their normal fill. Caps still apply.
 - Saving re-plans; anything that touches today re-plans today too (`includeToday`).
 - `Field` has a `group` mode — use it for any field holding several buttons (segmented, chips, weekday picker, swatches); a `<label>` around buttons gets tied to the first one.
+
+## Focus Mode (src/domain/focusTimer.ts, src/db/focusStore.ts, src/screens/focus)
+
+- Pure state machine on timestamps: `startTimer`, `advance(t, now)` (catches up every phase that ended while away; next phase starts exactly when the last ended; a run finishes by itself after a long break and is parked as a zero-length phase so re-syncing logs nothing twice), `pause`/`resume` (resume shifts `phaseStartedAt` by the paused time), `skipBreak`, `endTimer`, `trackedMinutes`, `cycleDots`. Work + break minutes both count.
+- `ActiveTimer` (single row, survives app close) snapshots `config` (goal override or defaults), `runStartedAt` and `targets` (today's open sessions of the goal, the one Focus started from first, with prior partial minutes).
+- Progress stays session-based: `allocate(targets, sessions, tracked)` → fully covered done, next partial, extra on the last one. `syncFocus` only flips sessions to done when the planned amount is reached (auto-complete); `endFocus` settles minutes, or — with nothing planned today — records a done session for the focused time. FocusIntervals are the detailed log (work vs break).
+- UI: `useFocus` re-renders 4×/s for display only and syncs every 5 s, at phase end and on return to the app; bells via `playBell` after `unlockAudio()` in the Start tap; `useWakeLock` while running; full-screen `/focus` (fixed overlay), `FocusPill` elsewhere; summary + note prompt at the end; "◷ Focus" in the session sheet.
