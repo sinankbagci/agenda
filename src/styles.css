@@ -144,3 +144,35 @@ body {
 .status-row + .status-row { border-top: 1px solid var(--border); }
 .status-row .ok { color: var(--ok); font-weight: 600; }
 .status-row .warn { color: var(--warn); text-align: right; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  max-width: 640px;
+}
+.card p { margin: 0 0 12px; }
+.card p:last-child { margin-bottom: 0; }
+
+.button-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+.button-row:last-child { margin-bottom: 0; }
+
+.btn {
+  min-height: var(--tap);
+  padding: 0 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.btn:disabled { opacity: 0.5; }
+.btn:active:not(:disabled) { transform: scale(0.98); }
+
+.ok { color: var(--ok); }
+.error { color: #c0392b; }
+@media (prefers-color-scheme: dark) { .error { color: #ff8a7a; } }

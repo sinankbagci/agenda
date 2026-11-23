@@ -29,8 +29,8 @@
 
 Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's features early, and stop after the requested step.
 
-1. Scaffold + PWA + routing + layout + deploy  ← **done**
-2. Data layer (Dexie schema, typed repos, export/import)
+1. Scaffold + PWA + routing + layout + deploy  ← done
+2. Data layer (Dexie schema, typed repos, export/import)  ← done
 3. Setup screens + onboarding
 4. Free-slot builder (pure) + tests
 5. Goals CRUD
@@ -56,3 +56,11 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - Tests: Vitest (`npm test`). Typecheck + build: `npm run build`.
 - Deploy: `.github/workflows/deploy.yml` builds and publishes to GitHub Pages on every push to `main`. The Vite `base` is `/agenda/` in production builds — keep all asset/manifest paths relative to it.
 - Layout: `src/app` (shell, routes), `src/screens` (one folder/file per screen), `src/db` (Dexie), `src/domain` (pure logic: planner, slots, timer, parser — no React/Dexie imports).
+
+## Data layer (src/db)
+
+- `types.ts` — every entity from SPEC §6. Conventions: ids are UUID strings; calendar days are `'yyyy-MM-dd'` (local); times of day are `'HH:mm'`; `*At` fields are epoch ms; durations are minutes unless named `*Hours`.
+- `schema.ts` — Dexie schema + `SCHEMA_VERSION`. **Never edit a published `db.version(n)`**: add `version(n+1)` with an upgrade and bump `SCHEMA_VERSION` (backups record it, `parseBackup` rejects newer ones). Booleans can't be IndexedDB index keys — filter them in memory.
+- `repositories.ts` — `createRepos(db)`; the app uses the `repos` singleton, tests pass a fresh `createDb('test-…')`. UI code goes through repos, not raw tables. Cascades: deleting a goal removes its topics, stats and still-planned sessions but keeps history; deleting a location removes its travel times; travel times are stored in both directions.
+- Backup: `backup.ts` is pure (format + validation), `backupDb.ts` does the I/O. Import REPLACES all data in one transaction (all or nothing). `meta` is device-only and never exported. `lastBackupAt` is only set after the file was actually shared/saved.
+- Settings is a single row (`id: 'settings'`); `repos.settings.get()` always merges over `DEFAULT_SETTINGS`, so adding a new setting only needs a default.

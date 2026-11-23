@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { pwaInfo } from 'virtual:pwa-info'
+import { BackupSection } from './settings/BackupSection'
 
 function useStandalone() {
   const nav = navigator as Navigator & { standalone?: boolean }
@@ -46,6 +47,7 @@ export function SettingsScreen() {
         {row('Network', online, 'Online', 'Offline')}
         {row('Persistent storage', persisted, 'Granted', 'Not granted')}
       </ul>
+      <BackupSection />
       <p className="muted small">Build {__BUILD_TIME__}{pwaInfo ? '' : ' · dev (no service worker)'}</p>
     </section>
   )
