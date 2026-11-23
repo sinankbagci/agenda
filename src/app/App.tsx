@@ -8,6 +8,10 @@ import { FixedBlockEditScreen } from '../screens/setup/FixedBlockEditScreen'
 import { Onboarding } from '../screens/onboarding/Onboarding'
 import { GoalsScreen } from '../screens/goals/GoalsScreen'
 import { GoalEditScreen } from '../screens/goals/GoalEditScreen'
+import { DayScreen } from '../screens/plan/DayScreen'
+import { WeekScreen } from '../screens/plan/WeekScreen'
+import { MonthScreen } from '../screens/plan/MonthScreen'
+import { usePlanKeeper } from './usePlanKeeper'
 import { useSettings } from '../ui/form'
 
 /** Main layout: sidebar (landscape) / tab bar (portrait). */
@@ -57,6 +61,8 @@ export function App() {
     else if (launch === 'redirect' && inOnboarding) setLaunch('done')
   }, [launch, settings, inOnboarding])
 
+  usePlanKeeper(launch === 'done')
+
   if (launch === 'pending') return null // first IndexedDB read takes a few ms
   if (launch === 'redirect' && !inOnboarding) return <Navigate to="/onboarding/welcome" replace />
 
@@ -67,9 +73,15 @@ export function App() {
       <Route path="/onboarding/:step?" element={<Onboarding />} />
       <Route element={<Shell />}>
         <Route path="/" element={<Navigate to="/today" replace />} />
+        <Route path="/today" element={<DayScreen />} />
+        <Route path="/day/:date" element={<DayScreen />} />
+        <Route path="/week" element={<WeekScreen />} />
+        <Route path="/week/:date" element={<WeekScreen />} />
+        <Route path="/month" element={<MonthScreen />} />
+        <Route path="/month/:month" element={<MonthScreen />} />
         <Route path="/goals" element={<GoalsScreen />} />
         <Route path="/goals/:id" element={<GoalEditScreen />} />
-        {NAV_ITEMS.filter((i) => i.path !== '/settings' && i.path !== '/goals').map((item) => (
+        {NAV_ITEMS.filter((i) => !['/settings', '/goals', '/today', '/week', '/month'].includes(i.path)).map((item) => (
           <Route key={item.path} path={item.path} element={<Placeholder title={item.label} />} />
         ))}
         <Route path="/settings" element={<SettingsScreen />} />

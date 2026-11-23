@@ -34,8 +34,8 @@ Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's fe
 3. Setup screens + onboarding  ← done
 4. Free-slot builder (pure) + tests  ← done
 5. Goals CRUD  ← done (incl. onboarding's “first goal” step)
-6. Planner v1 (pure) + tests  ← done (not yet triggered from the UI — step 7 wires replan into app open/edits)
-7. Today / Week / Month views
+6. Planner v1 (pure) + tests  ← done
+7. Today / Week / Month views  ← done
 8. Session actions
 9. Focus Mode (timestamp timer) + tests
 10. Topics & spaced review + tests
@@ -96,3 +96,10 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - Scoring: energy match, preferred time (+2), same goal within 60 min (−2), travel (−t/15), day load (recurring). Hard limits: daily goal cap, demanding cap, category rules. Review sessions are extra (not part of `totalHours`). Skipped minutes return to the pool; past planned sessions count as missed.
 - Warnings: `deadlineShortfall` (options: add free time, reduce hours, pause the goal that took the time, accept), `reviewNotPlaced`, `recurringShortfall` (grouped per goal), `ongoingShortfall`, `goalTravelUnknown`, grouped `setup`.
 - `replan(now, { includeToday })` (planStore.ts) is the only impure part: today stays frozen once it has a plan unless `includeToday`; deletes stale planned sessions ≥ from and saves the new ones + warnings (meta `planWarnings`). Acceptance scenario fixtures: `src/test/scenario.ts`.
+
+## Plan views (src/domain/agenda.ts, src/screens/plan, src/app/usePlanKeeper.ts)
+
+- `usePlanKeeper` (in App) re-plans automatically: on launch / resume / every minute if the last plan was made on another day, and 400 ms after any change to plan inputs (settings minus `lastBackupAt`/`onboardingDone`, goals, fixed blocks, availability, overrides, meals, places, travel, rules). Re-plans are serialized (`enqueueReplan`). Today is frozen once it has goal work (planStore).
+- `agenda.ts` (pure, tested): `dayTimeline` (fixed program + saved sessions), `nowAndNext`, `dayProgress`, `weekDates` (Mon-first), `hourRange`, `monthGrid`, `dayLoad`, `deadlineMarkers`.
+- Routes: `/today`, `/day/:date`, `/week[/:date]`, `/month[/:yyyy-MM]`. Week/Month headers link to each other (portrait tab bar has no Month tab). Warnings banner (Today only) reads meta `planWarnings`; dismissals in meta `dismissedWarnings`.
+- `useNow()` re-renders every 30 s for display only — never for measuring time.

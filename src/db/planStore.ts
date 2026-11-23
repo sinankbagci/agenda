@@ -47,7 +47,9 @@ export async function replan(now: Date, options: ReplanOptions = {}, db: AgendaD
 
   return db.transaction('rw', [db.sessions, db.meta, ...relatedTables(db)], async () => {
     const state = await loadPlanState(db)
-    const todayHasPlan = state.sessions.some((s) => s.date === today)
+    // Today is frozen once it has goal work planned. A day with only meals/travel (e.g. while
+    // onboarding, before any goal exists) is still re-planned, so new goals show up today.
+    const todayHasPlan = state.sessions.some((s) => s.date === today && (s.kind === 'goal' || s.kind === 'review'))
     const from = options.includeToday || !todayHasPlan ? today : tomorrow
     const result = plan(state, today, { from })
 

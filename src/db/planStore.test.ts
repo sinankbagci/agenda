@@ -63,6 +63,17 @@ describe('replan (database)', () => {
     }
   })
 
+  it('a today with no goal work yet is still re-planned (e.g. goals added during onboarding)', async () => {
+    const { db, r } = await seeded()
+    await db.goals.clear()
+    const first = await replan(MON, {}, db)
+    expect(first.sessions.some((s) => s.date === '2026-11-23' && s.kind === 'meal')).toBe(true)
+    await db.goals.put(reading)
+    const second = await replan(MON, {}, db)
+    expect(second.from).toBe('2026-11-23')
+    expect((await r.sessions.byDate('2026-11-23')).some((s) => s.goalId === 'reading')).toBe(true)
+  })
+
   it('does not duplicate sessions when run repeatedly', async () => {
     const { db } = await seeded()
     const first = await replan(MON, {}, db)
