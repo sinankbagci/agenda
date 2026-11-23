@@ -34,7 +34,7 @@ Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's fe
 3. Setup screens + onboarding  ← done
 4. Free-slot builder (pure) + tests  ← done
 5. Goals CRUD  ← done (incl. onboarding's “first goal” step)
-6. Planner v1 (pure) + tests
+6. Planner v1 (pure) + tests  ← done (not yet triggered from the UI — step 7 wires replan into app open/edits)
 7. Today / Week / Month views
 8. Session actions
 9. Focus Mode (timestamp timer) + tests
@@ -88,3 +88,11 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - Pure helpers: `blankGoal(type, today)`, `TEMPLATES`, `validateGoal(draft, today)`, `normalizeGoal` (drops other types' fields and empty optionals; recurring min/max session = session length; ongoing keeps exactly one of per-day/per-week), `previewGoal` / `describeGoal` (user-facing text), `studyDays(deadline, reviewDays, today)` (today included, review days excluded).
 - Priority: 1 = Low, 2 = Medium, 3 = High (higher wins). Book goals store `totalPages`, `pagesDone`, optional target date in `deadline`, and reading time in `minutesPerDay` (what the planner schedules).
 - Always save `normalizeGoal(draft)`. The edit screen (`GoalEditScreen`) is reused by onboarding at `/onboarding/goal/:id`; goal detail (topics, notes, history) comes in steps 10–11.
+
+## Planner (src/domain/planner.ts, src/db/planStore.ts)
+
+- `plan(state, today, { from })` → `{ from, to, sessions, warnings }`. Horizon = from → max(latest deadline/book date, +42 days). Output sessions are complete days: goal, review, meal and travel sessions with deterministic ids (`plan:<date>:<kind>:<key>:<n>`, never reusing a stored id).
+- Order: kept sessions (done/partial/skipped/frozen) occupy time → reviews reserved → deadline goals by urgency × priority with a 1.0→1.5 ramp over days that have room (carry-forward, then a fill pass) → recurring (best Mon–Sun subset: most spread, best score; rest rule includes Sun→Mon) → ongoing/book daily or weekly fill.
+- Scoring: energy match, preferred time (+2), same goal within 60 min (−2), travel (−t/15), day load (recurring). Hard limits: daily goal cap, demanding cap, category rules. Review sessions are extra (not part of `totalHours`). Skipped minutes return to the pool; past planned sessions count as missed.
+- Warnings: `deadlineShortfall` (options: add free time, reduce hours, pause the goal that took the time, accept), `reviewNotPlaced`, `recurringShortfall` (grouped per goal), `ongoingShortfall`, `goalTravelUnknown`, grouped `setup`.
+- `replan(now, { includeToday })` (planStore.ts) is the only impure part: today stays frozen once it has a plan unless `includeToday`; deletes stale planned sessions ≥ from and saves the new ones + warnings (meta `planWarnings`). Acceptance scenario fixtures: `src/test/scenario.ts`.

@@ -75,6 +75,8 @@ describe('validateGoal', () => {
   it('recurring goals: at most 4 sessions a week with rest days', () => {
     const workout = { ...blankGoal('recurring', TODAY), name: 'Workout', perWeek: 4, sessionLength: 45 }
     expect(errorsOf(workout)).toEqual([])
+    expect(warningsOf(workout)[0]).toMatch(/^4 a week with rest days only fits every other week/)
+    expect(warningsOf({ ...workout, perWeek: 3 })).toEqual([])
     expect(errorsOf({ ...workout, perWeek: 5 })).toContain('With rest days in between, at most 4 sessions fit in a week.')
     expect(errorsOf({ ...workout, perWeek: 5, noConsecutiveDays: false })).toEqual([])
     expect(errorsOf({ ...workout, perWeek: 8, noConsecutiveDays: false })).toContain('Sessions per week must be 1–7.')
