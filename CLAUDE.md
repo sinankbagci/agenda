@@ -9,7 +9,7 @@
 - **Fully offline.** All data lives on the device in IndexedDB (Dexie). The service worker (vite-plugin-pwa) precaches the whole app. Never add a runtime dependency on a CDN or remote asset.
 - **Data safety.** Call `navigator.storage.persist()` on first launch. Settings has JSON export/import; remind the user if there's been no backup in 14 days.
 - **The fixed program is never modified by the planner** — only by explicit user edits on its edit screen.
-- **iOS has no vibration and no local notifications.** Feedback = animation/sound. Reminders = `.ics` export with VALARM.
+- **iOS has no vibration and no local notifications.** Feedback = animation/sound. (The `.ics` export with VALARM reminders, step 15, was skipped — there are no reminders outside the app for now.)
 
 ## The planner must be a pure, tested function
 
@@ -43,7 +43,7 @@ Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's fe
 12. Activity log, check-in, backlog lists  ← done
 13. Learning from the log  ← done
 14. Weekly review  ← done (incl. the “+ Add” polish and one-off tasks)
-15. Apple Calendar `.ics` export
+15. ~~Apple Calendar `.ics` export~~  ← skipped at the user's request (the stored `calendarAlertMin` setting is kept but hidden in Settings)
 16. Quick add parser + tests
 17. Year in review
 18. Polish
