@@ -13,6 +13,8 @@ import { SessionSheet, type SheetMode } from './SessionSheet'
 import { AddToDaySheet } from './AddToDaySheet'
 import { FixedSheet } from './FixedSheet'
 import { ReviewBanner } from '../review/ReviewBanner'
+import { BackupReminder } from '../settings/BackupReminder'
+import { WeekGlance } from './WeekGlance'
 import { CheckInPrompt } from '../log/CheckInPrompt'
 import { SuggestionsCard } from '../learning/Suggestions'
 import { beginFocus } from '../focus/FocusScreen'
@@ -125,6 +127,9 @@ export function DayScreen() {
         </div>
       </div>
 
+      <div className={isToday ? 'day-cols with-glance' : 'day-cols'}>
+      <div className="day-main">
+      {isToday && <BackupReminder />}
       {isToday && <ReviewBanner today={today} />}
       {isToday && <WarningsBanner />}
 
@@ -172,6 +177,9 @@ export function DayScreen() {
           <span className="muted small">Today stays as planned unless you do this.</span>
         </div>
       )}
+      </div>
+      {isToday && <WeekGlance today={today} />}
+      </div>
 
       {fixedOpen && (
         <FixedSheet

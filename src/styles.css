@@ -945,7 +945,7 @@ div.field[role='group'] .segmented, div.field[role='group'] .goal-chips { align-
 .adjust-hours { display: flex; align-items: center; gap: 6px; }
 .adjust-hours .input { max-width: 90px; }
 .confirm-row { max-width: 720px; margin: 24px 0; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-.review-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; max-width: 720px; margin-bottom: 16px; border-color: var(--accent); }
+.review-banner, .backup-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; max-width: 720px; margin-bottom: 16px; border-color: var(--accent); }
 
 /* ---------- Quick add ---------- */
 .quick-add { max-width: 720px; margin-bottom: 16px; }
@@ -987,3 +987,37 @@ div.field[role='group'] .segmented, div.field[role='group'] .goal-chips { align-
 .legend-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--series); display: inline-block; }
 .media-stars { letter-spacing: 1px; color: var(--text); }
 .hbar-label a { color: inherit; text-decoration: none; font-weight: 600; }
+
+/* ---------- More (portrait) ---------- */
+.more-list { list-style: none; padding: 0; margin-top: 8px; }
+.more-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.more-link .nav-icon { color: var(--accent); }
+
+/* ---------- Today + week side by side (landscape) ---------- */
+.week-glance { display: none; }
+@media (orientation: landscape) and (min-width: 1100px) {
+  .day-cols.with-glance { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 24px; align-items: start; }
+  .day-cols.with-glance .day-main { min-width: 0; }
+  .week-glance { display: block; position: sticky; top: 0; }
+  .day-screen:has(.with-glance) .screen-head { max-width: none; }
+}
+.glance-head { display: flex; align-items: center; justify-content: space-between; }
+.week-glance h2 { margin: 0 0 8px; }
+.week-glance h2 + ul, .glance-head + ul { margin-top: 0; }
+.week-glance > h2:not(:first-child) { margin-top: 20px; }
+.glance-days, .glance-deadlines { list-style: none; padding: 0; margin: 0; }
+.glance-days { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.glance-days li + li { border-top: 1px solid var(--border); }
+.glance-day { display: grid; grid-template-columns: 64px 1fr; grid-template-rows: auto auto; column-gap: 10px; padding: 8px 12px; min-height: var(--tap); color: var(--text); text-decoration: none; }
+.glance-day:active { background: var(--accent-soft); }
+.glance-date { grid-row: 1 / 3; display: flex; flex-direction: column; justify-content: center; }
+.glance-dots { display: flex; gap: 4px; align-items: center; min-height: 12px; }
+.glance-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--goal, var(--accent)); }
+.glance-dot.done { background: var(--goal, var(--accent)); }
+.glance-time { font-variant-numeric: tabular-nums; font-size: 0.95rem; }
+.glance-days li.is-today { background: var(--accent-soft); }
+.glance-days li.is-today .glance-date strong { color: var(--accent); }
+.glance-days li.is-past .glance-date { opacity: 0.6; }
+.glance-deadlines li { padding: 6px 0; }
+.glance-deadlines a { color: var(--text); font-weight: 600; }
+.empty-inline { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
