@@ -12,6 +12,7 @@ import { NumberInput, Segmented } from '../../ui/form'
 import { useNow } from '../../ui/useNow'
 import { OverridesSection } from '../setup/AvailabilitySection'
 import { DeadlineBadge } from '../goals/GoalProgress'
+import { ReviewTabs } from './ReviewTabs'
 
 const day = (d: string, f = 'd MMM') => format(parseISO(d), f)
 
@@ -52,6 +53,7 @@ export function WeeklyReviewScreen() {
 
   return (
     <section className="screen review-screen">
+      <ReviewTabs />
       <div className="screen-head">
         <div>
           <h1>Weekly review</h1>

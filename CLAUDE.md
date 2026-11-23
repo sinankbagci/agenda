@@ -45,7 +45,7 @@ Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's fe
 14. Weekly review  ← done (incl. the “+ Add” polish and one-off tasks)
 15. ~~Apple Calendar `.ics` export~~  ← skipped at the user's request (the stored `calendarAlertMin` setting is kept but hidden in Settings)
 16. Quick add parser + tests  ← done
-17. Year in review
+17. Year in review  ← done
 18. Polish
 
 Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
@@ -166,3 +166,9 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - `parseQuickAdd(text, today, locations)` → `{ kind, name, date, minutes, perWeek, per, pages, locationId, category, missing }`. Tokens are taken out of the text in order (date → pages → "N× week" → duration → daily/weekly → place, "at <place>" preferred); what's left is the name. Dates: ISO, "Dec 12", "12 December", today/tomorrow, weekday names (a bare weekday on that weekday = next week); month/day without a year = next occurrence.
 - Kind: pages or leading "book" → book; N× a week → recurring; daily / a week → ongoing; task words (homework, assignment, task…) or due today/tomorrow → one-off task; a date (or ≥ 2 h) → deadline; else unknown.
 - UI: field at the top of Goals with a live `describeQuick` preview; Continue → `/goals/new?quick=…` (GoalEditScreen parses with `quickToDraft` and shows what still needs filling), tasks → `AddToDaySheet` with `initialTask` (`quickToTask`), unknown → template picker keeping the name (`?name=`).
+
+## Year in review (src/domain/yearReview.ts, src/screens/review)
+
+- Pure, tested: `minutesByDay` (focused minutes = done/partial goal + review sessions via `countedMinutes`, plus log entries with minutes), `heatmapWeeks` (Monday-first week columns, padding cells have no `date`; levels 0 / <30 / <60 / <120 / ≥120 min), `yearTotals` (total, active days, longest run of consecutive days, sessions done, per goal / category), `bestStreaks` (`streak().best` as of year end or today; tasks excluded), `deadlinesMet` (deadlines in the year that have passed: done minutes before the deadline ≥ totalHours; tasks: `completedAt` before their deadline, shown as the "do it by" day), `watchedAndRead` (finished backlog items with rating + watched/read logs, minus the log entry finishing an item created), `moodByMonth`, `yearsWithData`.
+- `/review/year` (`YearReviewScreen`); `ReviewTabs` switches between it and `/review`. Year picker when there's data in other years.
+- Charts follow the dataviz rules: heatmap = sequential blue (`.heatmap --h1..4`, separate light/dark steps, validated), empty days neutral, tap/focus tooltip, Less→More legend, monthly table; energy/mood = two-series line chart with legend (`--c-energy`, `--c-mood` per mode), gaps for months without check-ins, table view.
