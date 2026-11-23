@@ -13,5 +13,6 @@ export const DEFAULT_SETTINGS: Settings = {
   pomodoroLongBreak: 15,
   cyclesBeforeLong: 4,
   calendarAlertMin: 10,
+  completionSound: true,
   onboardingDone: false,
 }

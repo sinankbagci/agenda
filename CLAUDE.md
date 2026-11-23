@@ -36,7 +36,7 @@ Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's fe
 5. Goals CRUD  ← done (incl. onboarding's “first goal” step)
 6. Planner v1 (pure) + tests  ← done
 7. Today / Week / Month views  ← done
-8. Session actions
+8. Session actions  ← done
 9. Focus Mode (timestamp timer) + tests
 10. Topics & spaced review + tests
 11. Progress & streaks
@@ -103,3 +103,10 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - `agenda.ts` (pure, tested): `dayTimeline` (fixed program + saved sessions), `nowAndNext`, `dayProgress`, `weekDates` (Mon-first), `hourRange`, `monthGrid`, `dayLoad`, `deadlineMarkers`.
 - Routes: `/today`, `/day/:date`, `/week[/:date]`, `/month[/:yyyy-MM]`. Week/Month headers link to each other (portrait tab bar has no Month tab). Warnings banner (Today only) reads meta `planWarnings`; dismissals in meta `dismissedWarnings`.
 - `useNow()` re-renders every 30 s for display only — never for measuring time.
+
+## Session actions (src/domain/sessions.ts, src/screens/plan)
+
+- Pure transforms: `complete` (actualMinutes = planned), `partial(minutes)` (≥ planned → done), `skip`, `undo` (keeps note), `withNote`; `canComplete` only on/after the session's day, `canSkip` any day; past `planned` work = missed (counts 0). `lastNoteBefore` / `notesOf` for notes.
+- Every status change saves and calls `enqueueReplan()` (today stays frozen). Notes save without re-planning.
+- Planner rules added here: a goal skipped on a day gets nothing new that day; ramp shares subtract work already kept on that day; `notBefore` (minutes) keeps "Re-plan today" after now, and `replan(..., { includeToday })` freezes today's already-started planned sessions first.
+- UI: big ✓ (`.check`), `SwipeRow` (right = done, left = Part/Skip or Undo; gesture distance kept in a ref, the click ending a swipe is swallowed), `SessionSheet` (modes actions / part / note), `playChime` (Web Audio, called inside the tap) when `settings.completionSound`, `Burst` confetti, "Re-plan the rest of today" on Today, session notes on the goal page.

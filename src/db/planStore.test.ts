@@ -63,6 +63,23 @@ describe('replan (database)', () => {
     }
   })
 
+  it('“Re-plan today” keeps sessions that already started and plans nothing before now', async () => {
+    const { db, r } = await seeded()
+    await replan(MON, {}, db)
+    const at1630 = new Date(2026, 10, 23, 16, 30)
+    const inProgress = (await r.sessions.byDate('2026-11-23')).find((s) => s.goalId === 'midterm')!
+    expect(inProgress.start).toBe('16:00')
+    await r.goals.update('reading', { minutesPerDay: 15, minSession: 15, maxSession: 15 })
+    await replan(at1630, { includeToday: true }, db)
+    const today = await r.sessions.byDate('2026-11-23')
+    expect(today.find((s) => s.id === inProgress.id)).toMatchObject({ start: '16:00', status: 'planned', frozen: true })
+    for (const s of today.filter((x) => x.id !== inProgress.id && x.goalId && !x.frozen)) {
+      expect(toMinutes(s.start)).toBeGreaterThanOrEqual(16 * 60 + 30)
+    }
+    const readingToday = today.filter((s) => s.goalId === 'reading')
+    expect(readingToday.map((s) => toMinutes(s.end) - toMinutes(s.start))).toEqual([15]) // the edit applied to the rest of today
+  })
+
   it('a today with no goal work yet is still re-planned (e.g. goals added during onboarding)', async () => {
     const { db, r } = await seeded()
     await db.goals.clear()

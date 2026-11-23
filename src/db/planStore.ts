@@ -8,6 +8,7 @@ import { db as defaultDb, type AgendaDB } from './db'
 import { createRepos } from './repositories'
 import { plan, type PlanResult, type PlanState, type PlanWarning } from '../domain/planner'
 import type { ISODate } from './types'
+import { toMinutes } from '../domain/time'
 
 export async function loadPlanState(db: AgendaDB = defaultDb): Promise<PlanState> {
   const r = createRepos(db)
@@ -51,7 +52,16 @@ export async function replan(now: Date, options: ReplanOptions = {}, db: AgendaD
     // onboarding, before any goal exists) is still re-planned, so new goals show up today.
     const todayHasPlan = state.sessions.some((s) => s.date === today && (s.kind === 'goal' || s.kind === 'review'))
     const from = options.includeToday || !todayHasPlan ? today : tomorrow
-    const result = plan(state, today, { from })
+    const nowMin = now.getHours() * 60 + now.getMinutes()
+
+    // Re-planning today: sessions that already started stay where they are (in progress,
+    // or missed); new work only goes after now.
+    if (from === today) {
+      const started = state.sessions.filter((s) => s.date === today && s.status === 'planned' && !s.frozen && toMinutes(s.start) < nowMin)
+      for (const s of started) s.frozen = true
+      if (started.length) await db.sessions.bulkPut(started)
+    }
+    const result = plan(state, today, { from, notBefore: from === today ? nowMin : undefined })
 
     const stale = state.sessions.filter((s) => s.date >= from && s.status === 'planned' && !s.frozen).map((s) => s.id)
     await db.sessions.bulkDelete(stale)

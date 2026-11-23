@@ -152,6 +152,8 @@ export interface Settings {
   pomodoroLongBreak: number
   cyclesBeforeLong: number
   calendarAlertMin: number
+  /** Soft chime when a session is completed (iOS has no vibration). */
+  completionSound: boolean
   onboardingDone: boolean
 }
 

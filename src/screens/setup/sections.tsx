@@ -68,7 +68,7 @@ export const SECTIONS = {
   },
   defaults: {
     key: 'defaults',
-    title: 'Focus timer & calendar',
+    title: 'Focus timer, calendar & sound',
     intro: 'Defaults for Focus Mode (goals can override them) and for calendar exports.',
     Component: DefaultsSection,
   },

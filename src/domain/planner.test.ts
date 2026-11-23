@@ -194,6 +194,30 @@ describe('progress and kept sessions', () => {
     expect(planned).toBeLessThan(825)
   })
 
+  it('notBefore: re-planning today in the evening only uses time after now', () => {
+    const r = plan(withGoals([midterm, reading]), TODAY, { notBefore: 18 * 60 })
+    for (const x of r.sessions.filter((x) => x.date === TODAY && (x.kind === 'goal' || x.kind === 'travel') && x.goalId)) {
+      expect(toMinutes(x.start)).toBeGreaterThanOrEqual(18 * 60)
+    }
+    expect(r.sessions.some((x) => x.date === '2026-11-24' && toMinutes(x.start) === 16 * 60)).toBe(true) // tomorrow untouched
+  })
+
+  it('a goal skipped on a day gets nothing new that day, even when re-planning today', () => {
+    const skipped = [session({ goalId: 'workout', date: TODAY, start: '20:10', end: '20:55', status: 'skipped', locationId: 'gym' })]
+    const r = plan(withGoals([workout], { sessions: skipped }), TODAY, { notBefore: 16 * 60 + 30 })
+    expect(goalSessions(r.sessions, 'workout').some((s) => s.date === TODAY)).toBe(false)
+    expect(goalSessions(r.sessions, 'workout').some((s) => s.date === '2026-11-24')).toBe(true) // made up later in the week
+  })
+
+  it('re-planning today after finishing today’s share adds no more of that goal today', () => {
+    const done = [session({ goalId: 'midterm', date: TODAY, start: '16:00', end: '16:55', status: 'done', actualMinutes: 55 })]
+    const r = plan(withGoals([midterm], { sessions: done }), TODAY, { notBefore: 17 * 60 })
+    expect(goalSessions(r.sessions, 'midterm').some((s) => s.date === TODAY)).toBe(false)
+    const total = sum(goalSessions(r.sessions, 'midterm'))
+    expect(total).toBeGreaterThanOrEqual(900 - 55)
+    expect(total).toBeLessThan(900 - 55 + 45)
+  })
+
   it('never plans over a session that is done or in progress', () => {
     const kept = [session({ goalId: 'reading', date: TODAY, start: '16:00', end: '18:00', status: 'done' })]
     const r = plan(withGoals([midterm], { sessions: kept }), TODAY)

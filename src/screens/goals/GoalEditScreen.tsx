@@ -5,6 +5,7 @@ import { repos } from '../../db/repositories'
 import { TEMPLATES, normalizeGoal, previewGoal, toDraft, validateGoal, type GoalDraft } from '../../domain/goals'
 import { Problems, Segmented, hasErrors } from '../../ui/form'
 import { GoalForm } from './GoalForm'
+import { GoalNotes } from './GoalNotes'
 import { TemplatePicker } from './TemplatePicker'
 
 /**
@@ -96,6 +97,7 @@ export function GoalEditScreen({ base = '/goals' }: { base?: string }) {
         </div>
       )}
       <GoalForm draft={draft} set={setDraft} today={today} isNew={isNew} />
+      {!isNew && <GoalNotes goalId={id!} />}
       <div className="form-footer">
         {preview && <p className="preview">{preview}</p>}
         <Problems check={tried ? check : { errors: [], warnings: check.warnings }} />
