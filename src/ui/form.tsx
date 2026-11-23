@@ -196,3 +196,13 @@ export const hasErrors = (c: Check) => c.errors.length > 0
 export function useSettings() {
   return useLiveQuery(() => repos.settings.get(), [])
 }
+
+/** iOS-style on/off switch with a label. */
+export function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <label className="switch-row">
+      <span>{label}</span>
+      <input type="checkbox" role="switch" className="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    </label>
+  )
+}

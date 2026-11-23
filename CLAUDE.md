@@ -31,9 +31,9 @@ Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's fe
 
 1. Scaffold + PWA + routing + layout + deploy  ← done
 2. Data layer (Dexie schema, typed repos, export/import)  ← done
-3. Setup screens + onboarding  ← done (onboarding's “first goal” step comes with step 5)
+3. Setup screens + onboarding  ← done
 4. Free-slot builder (pure) + tests  ← done
-5. Goals CRUD
+5. Goals CRUD  ← done (incl. onboarding's “first goal” step)
 6. Planner v1 (pure) + tests
 7. Today / Week / Month views
 8. Session actions
@@ -82,3 +82,9 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - Each free slot carries its `energy` and `locationId` (where you are then) for the planner's scoring and "goals pull travel with them".
 - Category-specific rules (`noGoalAfter`/`noGoalBefore` with a category) are NOT applied here — the planner (step 6) applies them per goal.
 - Problems become `warnings` with user-facing messages (overlapping fixed blocks, meal doesn't fit, missing/too-tight travel); impossible travel is still shown as a block.
+
+## Goals (src/domain/goals.ts, src/screens/goals)
+
+- Pure helpers: `blankGoal(type, today)`, `TEMPLATES`, `validateGoal(draft, today)`, `normalizeGoal` (drops other types' fields and empty optionals; recurring min/max session = session length; ongoing keeps exactly one of per-day/per-week), `previewGoal` / `describeGoal` (user-facing text), `studyDays(deadline, reviewDays, today)` (today included, review days excluded).
+- Priority: 1 = Low, 2 = Medium, 3 = High (higher wins). Book goals store `totalPages`, `pagesDone`, optional target date in `deadline`, and reading time in `minutesPerDay` (what the planner schedules).
+- Always save `normalizeGoal(draft)`. The edit screen (`GoalEditScreen`) is reused by onboarding at `/onboarding/goal/:id`; goal detail (topics, notes, history) comes in steps 10–11.
