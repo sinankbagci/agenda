@@ -16,5 +16,11 @@ export const NAV_ITEMS: NavItem[] = [
   { path: '/settings', label: 'Settings', icon: '⚙︎' },
 ]
 
-/** Portrait tab bar has room for 5; the rest live under "More" (settings for now). */
-export const TAB_BAR_PATHS = ['/today', '/week', '/goals', '/focus', '/settings']
+/** Portrait tab bar has room for 5: four screens + "More" (everything else, see MoreScreen). */
+export const TAB_BAR_PATHS = ['/today', '/week', '/goals', '/focus']
+
+/** Screens reached through "More" in portrait (the tab is highlighted on them). */
+export const MORE_ITEMS: NavItem[] = NAV_ITEMS.filter((i) => !TAB_BAR_PATHS.includes(i.path))
+
+export const isUnderMore = (pathname: string) =>
+  pathname === '/more' || MORE_ITEMS.some((i) => pathname === i.path || pathname.startsWith(`${i.path}/`))

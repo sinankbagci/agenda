@@ -1,28 +1,33 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Navigate, NavLink, Outlet, Route, Routes, useLocation } from 'react-router-dom'
-import { NAV_ITEMS, TAB_BAR_PATHS } from './routes'
-import { Placeholder } from '../screens/Placeholder'
-import { SettingsScreen } from '../screens/SettingsScreen'
-import { SettingsSectionPage } from '../screens/setup/SettingsSectionPage'
-import { FixedBlockEditScreen } from '../screens/setup/FixedBlockEditScreen'
-import { Onboarding } from '../screens/onboarding/Onboarding'
-import { GoalsScreen } from '../screens/goals/GoalsScreen'
-import { GoalEditScreen } from '../screens/goals/GoalEditScreen'
-import { GoalDetailScreen } from '../screens/goals/GoalDetailScreen'
+import { NAV_ITEMS, TAB_BAR_PATHS, isUnderMore } from './routes'
 import { DayScreen } from '../screens/plan/DayScreen'
-import { WeekScreen } from '../screens/plan/WeekScreen'
-import { MonthScreen } from '../screens/plan/MonthScreen'
 import { usePlanKeeper } from './usePlanKeeper'
-import { FocusScreen } from '../screens/focus/FocusScreen'
 import { FocusPill } from '../screens/focus/FocusPill'
-import { LogScreen } from '../screens/log/LogScreen'
-import { ListsScreen } from '../screens/lists/ListsScreen'
-import { WeeklyReviewScreen } from '../screens/review/WeeklyReviewScreen'
-import { YearReviewScreen } from '../screens/review/YearReviewScreen'
+import { FocusScreen } from '../screens/focus/FocusScreen' // also used by Today / goal pages
 import { useSettings } from '../ui/form'
+
+// Today loads with the app; every other screen is its own chunk (all precached for offline use).
+const named = <K extends string>(load: () => Promise<Record<K, React.ComponentType<any>>>, name: K) =>
+  lazy(() => load().then((m) => ({ default: m[name] })))
+const SettingsScreen = named(() => import('../screens/SettingsScreen'), 'SettingsScreen')
+const SettingsSectionPage = named(() => import('../screens/setup/SettingsSectionPage'), 'SettingsSectionPage')
+const FixedBlockEditScreen = named(() => import('../screens/setup/FixedBlockEditScreen'), 'FixedBlockEditScreen')
+const Onboarding = named(() => import('../screens/onboarding/Onboarding'), 'Onboarding')
+const GoalsScreen = named(() => import('../screens/goals/GoalsScreen'), 'GoalsScreen')
+const GoalEditScreen = named(() => import('../screens/goals/GoalEditScreen'), 'GoalEditScreen')
+const GoalDetailScreen = named(() => import('../screens/goals/GoalDetailScreen'), 'GoalDetailScreen')
+const WeekScreen = named(() => import('../screens/plan/WeekScreen'), 'WeekScreen')
+const MonthScreen = named(() => import('../screens/plan/MonthScreen'), 'MonthScreen')
+const LogScreen = named(() => import('../screens/log/LogScreen'), 'LogScreen')
+const ListsScreen = named(() => import('../screens/lists/ListsScreen'), 'ListsScreen')
+const WeeklyReviewScreen = named(() => import('../screens/review/WeeklyReviewScreen'), 'WeeklyReviewScreen')
+const YearReviewScreen = named(() => import('../screens/review/YearReviewScreen'), 'YearReviewScreen')
+const MoreScreen = named(() => import('../screens/MoreScreen'), 'MoreScreen')
 
 /** Main layout: sidebar (landscape) / tab bar (portrait). */
 function Shell() {
+  const { pathname } = useLocation()
   return (
     <div className="shell">
       <nav className="sidebar" aria-label="Main">
@@ -38,7 +43,9 @@ function Shell() {
       </nav>
 
       <main className="main">
-        <Outlet />
+        <Suspense fallback={null}>
+          <Outlet />
+        </Suspense>
       </main>
       <FocusPill />
 
@@ -51,6 +58,12 @@ function Shell() {
             <span className="tab-label">{item.label}</span>
           </NavLink>
         ))}
+        <NavLink to="/more" className={() => (isUnderMore(pathname) ? 'tab-link active' : 'tab-link')}>
+          <span className="nav-icon" aria-hidden>
+            ⋯
+          </span>
+          <span className="tab-label">More</span>
+        </NavLink>
       </nav>
     </div>
   )
@@ -75,6 +88,7 @@ export function App() {
   if (launch === 'redirect' && !inOnboarding) return <Navigate to="/onboarding/welcome" replace />
 
   return (
+    <Suspense fallback={null}>
     <Routes>
       <Route path="/onboarding/fixed/:id" element={<div className="onboarding"><FixedBlockEditScreen /></div>} />
       <Route path="/onboarding/goal/:id" element={<div className="onboarding"><GoalEditScreen base="/onboarding/goal" /></div>} />
@@ -96,14 +110,13 @@ export function App() {
         <Route path="/goals/new" element={<GoalEditScreen />} />
         <Route path="/goals/:id" element={<GoalDetailScreen />} />
         <Route path="/goals/:id/edit" element={<GoalEditScreen />} />
-        {NAV_ITEMS.filter((i) => !['/settings', '/goals', '/today', '/week', '/month', '/focus', '/log', '/lists', '/review'].includes(i.path)).map((item) => (
-          <Route key={item.path} path={item.path} element={<Placeholder title={item.label} />} />
-        ))}
+        <Route path="/more" element={<MoreScreen />} />
         <Route path="/settings" element={<SettingsScreen />} />
         <Route path="/settings/fixed/:id" element={<FixedBlockEditScreen />} />
         <Route path="/settings/:section" element={<SettingsSectionPage />} />
         <Route path="*" element={<Navigate to="/today" replace />} />
       </Route>
     </Routes>
+    </Suspense>
   )
 }

@@ -5,6 +5,7 @@ import { formatDuration } from '../../domain/time'
 import { useNow } from '../../ui/useNow'
 import { useSettings } from '../../ui/form'
 import { usePlanData } from './usePlanData'
+import { NoGoalsHint } from './NoGoalsHint'
 
 const MONTH_RE = /^\d{4}-\d{2}$/
 const MARK = { deadline: '📌', review: '↺', book: '📕' } as const
@@ -42,6 +43,8 @@ export function MonthScreen() {
           </button>
         </div>
       </div>
+
+      <NoGoalsHint data={data} />
 
       <div className="month-grid">
         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (

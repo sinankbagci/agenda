@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { BackupError, backupFileName, parseBackup, serializeBackup, summarizeBackup } from '../../db/backup'
-import { exportBackup, importBackup, markBackedUp } from '../../db/backupDb'
-import { saveJsonFile } from '../../db/backupFile'
+import { BackupError, parseBackup, summarizeBackup } from '../../db/backup'
+import { importBackup } from '../../db/backupDb'
+import { exportNow } from './exportNow'
 import { repos } from '../../db/repositories'
 
 type Status = { kind: 'ok' | 'error'; text: string } | null
@@ -37,10 +37,7 @@ export function BackupSection() {
     setStatus(null)
     try {
       const now = Date.now()
-      const backup = await exportBackup(now)
-      const result = await saveJsonFile(backupFileName(now), serializeBackup(backup))
-      if (result === 'cancelled') return
-      await markBackedUp(now)
+      if ((await exportNow(now)) === 'cancelled') return
       setLastBackupAt(now)
       setStatus({ kind: 'ok', text: 'Backup created. Keep it somewhere safe, like iCloud Drive in Files.' })
     } catch (e) {

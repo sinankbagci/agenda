@@ -46,7 +46,7 @@ Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's fe
 15. ~~Apple Calendar `.ics` export~~  ← skipped at the user's request (the stored `calendarAlertMin` setting is kept but hidden in Settings)
 16. Quick add parser + tests  ← done
 17. Year in review  ← done
-18. Polish
+18. Polish  ← done
 
 Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 
@@ -172,3 +172,11 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - Pure, tested: `minutesByDay` (focused minutes = done/partial goal + review sessions via `countedMinutes`, plus log entries with minutes), `heatmapWeeks` (Monday-first week columns, padding cells have no `date`; levels 0 / <30 / <60 / <120 / ≥120 min), `yearTotals` (total, active days, longest run of consecutive days, sessions done, per goal / category), `bestStreaks` (`streak().best` as of year end or today; tasks excluded), `deadlinesMet` (deadlines in the year that have passed: done minutes before the deadline ≥ totalHours; tasks: `completedAt` before their deadline, shown as the "do it by" day), `watchedAndRead` (finished backlog items with rating + watched/read logs, minus the log entry finishing an item created), `moodByMonth`, `yearsWithData`.
 - `/review/year` (`YearReviewScreen`); `ReviewTabs` switches between it and `/review`. Year picker when there's data in other years.
 - Charts follow the dataviz rules: heatmap = sequential blue (`.heatmap --h1..4`, separate light/dark steps, validated), empty days neutral, tap/focus tooltip, Less→More legend, monthly table; energy/mood = two-series line chart with legend (`--c-energy`, `--c-mood` per mode), gaps for months without check-ins, table view.
+
+## Polish (step 18)
+
+- Backup reminder: `backupReminderDue` (src/domain/backupReminder.ts, tested) — 14 days since `lastBackupAt`, or since meta `firstLaunchAt` (set in main.tsx) if never backed up; only with data; "Later" snoozes 3 days (meta `backupSnoozedUntil`). `BackupReminder` banner on Today; `exportNow()` (screens/settings) is the one export path, also used by Settings.
+- Portrait tab bar: Today, Week, Goals, Focus + **More** (`/more`, `MoreScreen`); `MORE_ITEMS` / `isUnderMore` in routes.ts keep the More tab highlighted on Month, Log, Lists, Review, Settings.
+- Landscape ≥ 1100px: Today shows `WeekGlance` on the right (this week's days with goal time, done count, coloured dots; deadlines in the next two weeks). Hidden by CSS otherwise.
+- Empty states: Today (no goals), Week / Month (`NoGoalsHint`), and every list screen has its own "nothing yet" line.
+- Code splitting: every screen except Today and Focus is `React.lazy` (chunks are precached by the service worker, so offline still works); keep the main chunk under 500 kB.

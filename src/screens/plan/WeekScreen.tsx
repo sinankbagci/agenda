@@ -4,6 +4,7 @@ import { dayTimeline, hourRange, weekDates, type TimelineItem } from '../../doma
 import { formatDuration, fromMinutes } from '../../domain/time'
 import { useNow } from '../../ui/useNow'
 import { usePlanData } from './usePlanData'
+import { NoGoalsHint } from './NoGoalsHint'
 
 const HOUR_PX = 44
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -54,6 +55,8 @@ export function WeekScreen() {
           </button>
         </div>
       </div>
+
+      <NoGoalsHint data={data} />
 
       <div className="week-grid">
         <div className="week-corner" />
