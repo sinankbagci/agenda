@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { format } from 'date-fns'
 import { repos } from '../../db/repositories'
 import { TEMPLATES, normalizeGoal, previewGoal, toDraft, validateGoal, type GoalDraft } from '../../domain/goals'
+import { describeQuick, parseQuickAdd, quickToDraft } from '../../domain/quickAdd'
 import { Problems, Segmented, hasErrors } from '../../ui/form'
 import { GoalForm } from './GoalForm'
 import { TemplatePicker } from './TemplatePicker'
@@ -24,12 +25,22 @@ export function GoalEditScreen({ base = '/goals' }: { base?: string }) {
   const [draft, setDraft] = useState<GoalDraft | null>(null)
   const [missing, setMissing] = useState(false)
   const [tried, setTried] = useState(false)
+  const [quickInfo, setQuickInfo] = useState<{ text: string; missing: string[] } | null>(null)
 
   useEffect(() => {
     setTried(false)
     if (isNew) {
+      const quick = params.get('quick') // from Quick add: parse and pre-fill (SPEC 3.5)
+      if (quick) {
+        void repos.locations.all().then((locations) => {
+          const r = parseQuickAdd(quick, today, locations)
+          setQuickInfo({ text: describeQuick(r, locations), missing: r.missing })
+          setDraft(quickToDraft(r, today))
+        })
+        return
+      }
       const t = TEMPLATES.find((x) => x.key === templateKey)
-      const name = params.get('name') // e.g. a book from the reading list
+      const name = params.get('name') // e.g. a book from the reading list, or an unclear quick add
       setDraft(t ? { ...t.make(today), ...(name ? { name: name.slice(0, 100) } : {}) } : null)
       return
     }
@@ -53,7 +64,7 @@ export function GoalEditScreen({ base = '/goals' }: { base?: string }) {
       <section className="screen">
         {header('New goal')}
         <p className="muted intro">Pick a starting point — you can change everything on the next screen.</p>
-        <TemplatePicker base={`${base}/new`} />
+        <TemplatePicker base={`${base}/new`} name={params.get('name') ?? undefined} />
       </section>
     )
   }
@@ -96,6 +107,12 @@ export function GoalEditScreen({ base = '/goals' }: { base?: string }) {
           />
           <span className="muted">{draft.active ? 'Planned into your days.' : 'Not planned until you resume it.'}</span>
         </div>
+      )}
+      {quickInfo && (
+        <p className="quick-banner">
+          From quick add: <strong>{quickInfo.text}</strong>. Check the details below
+          {quickInfo.missing.length ? <> — still needed: {quickInfo.missing.join(', ')}</> : null}.
+        </p>
       )}
       <GoalForm draft={draft} set={setDraft} today={today} isNew={isNew} />
       <div className="form-footer">

@@ -946,3 +946,12 @@ div.field[role='group'] .segmented, div.field[role='group'] .goal-chips { align-
 .adjust-hours .input { max-width: 90px; }
 .confirm-row { max-width: 720px; margin: 24px 0; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .review-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; max-width: 720px; margin-bottom: 16px; border-color: var(--accent); }
+
+/* ---------- Quick add ---------- */
+.quick-add { max-width: 720px; margin-bottom: 16px; }
+.quick-row { display: flex; gap: 10px; }
+.quick-row .input { flex: 1; }
+.quick-preview { margin: 10px 0 0; }
+.quick-examples { margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.example { border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 999px; padding: 6px 12px; min-height: 36px; font: inherit; font-size: 0.85rem; }
+.quick-banner { max-width: 720px; padding: 10px 14px; border-radius: 12px; background: var(--accent-soft); margin: 0 0 16px; }

@@ -5,6 +5,7 @@ import { repos } from '../../db/repositories'
 import type { Goal } from '../../db/types'
 import { GoalCard } from './GoalCard'
 import { TaskRow } from './TaskParts'
+import { QuickAdd } from './QuickAdd'
 
 /** Higher priority first, then nearest deadline, then name. */
 export const goalOrder = (a: Goal, b: Goal) =>
@@ -29,6 +30,7 @@ export function GoalsScreen() {
           + New goal
         </Link>
       </div>
+      <QuickAdd />
       {goals.filter((g) => !g.oneOff).length === 0 && tasks.length === 0 && (
         <div className="card empty-state">
           <p>
