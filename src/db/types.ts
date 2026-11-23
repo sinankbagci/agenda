@@ -172,6 +172,14 @@ export interface Session {
   actualMinutes?: number
   note?: string
   frozen: boolean
+  /** Display label for meals ("Lunch"); goal sessions use the goal's name. */
+  label?: string
+  mealId?: string
+  /** Where a goal session or meal happens. */
+  locationId?: string
+  /** Travel sessions: from → to. */
+  fromLocationId?: string
+  toLocationId?: string
 }
 
 export type FocusPhase = 'work' | 'break' | 'longBreak'

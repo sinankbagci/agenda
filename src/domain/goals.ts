@@ -198,6 +198,8 @@ export function validateGoal(input: GoalDraft, today: ISODate): Check {
     case 'recurring':
       if (!(isPosInt(d.perWeek) && d.perWeek <= 7)) errors.push('Sessions per week must be 1–7.')
       else if (d.noConsecutiveDays && d.perWeek > 4) errors.push('With rest days in between, at most 4 sessions fit in a week.')
+      else if (d.noConsecutiveDays && d.perWeek === 4)
+        warnings.push('4 a week with rest days only fits every other week (Sunday → Monday counts as back-to-back), so some weeks get 3.')
       if (!(isPosInt(d.sessionLength) && d.sessionLength <= 360)) errors.push('Session length must be 1–360 minutes.')
       break
     case 'ongoing': {
