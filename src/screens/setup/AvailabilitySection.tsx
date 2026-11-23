@@ -12,6 +12,7 @@ import {
 import { WEEKDAYS_MON_FIRST, WEEKDAY_LONG, formatDuration, toMinutes } from '../../domain/time'
 import { EditableList } from '../../ui/EditableList'
 import { DateInput, Field, Segmented, TimeInput, WeekdayPicker } from '../../ui/form'
+import { GoalChips, boostableGoals } from '../../ui/GoalChips'
 
 const ENERGY_OPTIONS = [
   { value: 'high', label: 'High' },
@@ -92,7 +93,7 @@ function DayCard({ weekday, windows }: { weekday: Weekday; windows: Availability
             <Field label="Until">
               <TimeInput value={d.end} onChange={(end) => set({ ...d, end })} />
             </Field>
-            <Field label="Energy" hint="Demanding goals go to high-energy time, light ones to low.">
+            <Field label="Energy" hint="Demanding goals go to high-energy time, light ones to low." group>
               <Segmented value={d.energy} options={ENERGY_OPTIONS} onChange={(energy) => set({ ...d, energy })} />
             </Field>
           </div>
@@ -124,17 +125,34 @@ export function AvailabilitySection() {
 
 // ---------- One-off overrides ----------
 
-type OverrideDraft = { date: string; kind: 'busy' | 'free'; allDay: boolean; start: string; end: string }
+type OverrideDraft = {
+  date: string
+  kind: 'busy' | 'free'
+  allDay: boolean
+  start: string
+  end: string
+  energy: Energy
+  boostGoalIds: string[]
+}
 
-const toOverride = (d: OverrideDraft): Omit<AvailabilityOverride, 'id'> =>
-  d.allDay ? { date: d.date, kind: d.kind } : { date: d.date, kind: d.kind, start: d.start, end: d.end }
+const toOverride = (d: OverrideDraft): Omit<AvailabilityOverride, 'id'> => {
+  if (d.allDay) return { date: d.date, kind: d.kind }
+  const o: Omit<AvailabilityOverride, 'id'> = { date: d.date, kind: d.kind, start: d.start, end: d.end }
+  if (d.kind === 'free') {
+    o.energy = d.energy
+    if (d.boostGoalIds.length) o.boostGoalIds = d.boostGoalIds
+  }
+  return o
+}
 
 const formatDay = (iso: string) => format(new Date(`${iso}T00:00`), 'EEE d MMM yyyy')
 
 export function OverridesSection() {
   const today = format(new Date(), 'yyyy-MM-dd')
   const overrides = useLiveQuery(() => repos.availabilityOverrides.all(), [])
+  const goals = useLiveQuery(() => repos.goals.all(), [], [])
   if (!overrides) return null
+  const goalNames = (ids?: string[]) => (ids ?? []).map((id) => goals.find((g) => g.id === id)?.name).filter(Boolean).join(', ')
   const upcoming = overrides.filter((o) => o.date >= today).sort((a, b) => a.date.localeCompare(b.date) || (a.start ?? '').localeCompare(b.start ?? ''))
   return (
     <EditableList<AvailabilityOverride, OverrideDraft>
@@ -146,10 +164,20 @@ export function OverridesSection() {
           <strong>{formatDay(o.date)}</strong>
           <span className={o.kind === 'busy' ? 'badge busy' : 'badge free'}>{o.kind === 'busy' ? 'Busy' : 'Free'}</span>
           <span className="muted">{o.start ? `${o.start}–${o.end}` : 'all day'}</span>
+          {o.kind === 'free' && o.energy && o.energy !== 'normal' && <EnergyTag energy={o.energy} />}
+          {o.boostGoalIds?.length ? <span className="muted">for {goalNames(o.boostGoalIds)}</span> : null}
         </span>
       )}
-      toDraft={(o) => ({ date: o.date, kind: o.kind, allDay: !o.start, start: o.start ?? '13:00', end: o.end ?? '18:00' })}
-      newDraft={() => ({ date: today, kind: 'busy', allDay: true, start: '13:00', end: '18:00' })}
+      toDraft={(o) => ({
+        date: o.date,
+        kind: o.kind,
+        allDay: !o.start,
+        start: o.start ?? '13:00',
+        end: o.end ?? '18:00',
+        energy: o.energy ?? 'normal',
+        boostGoalIds: o.boostGoalIds ?? [],
+      })}
+      newDraft={() => ({ date: today, kind: 'busy', allDay: true, start: '13:00', end: '18:00', energy: 'normal', boostGoalIds: [] })}
       validate={(d) => validateOverride(toOverride(d))}
       onSave={(d, id) =>
         id ? repos.availabilityOverrides.put({ ...toOverride(d), id }) : repos.availabilityOverrides.add(toOverride(d))
@@ -160,7 +188,7 @@ export function OverridesSection() {
           <Field label="Date">
             <DateInput value={d.date} onChange={(date) => set({ ...d, date })} />
           </Field>
-          <Field label="I’m…">
+          <Field label="I’m…" group>
             <Segmented
               value={d.kind}
               options={[
@@ -171,7 +199,7 @@ export function OverridesSection() {
             />
           </Field>
           {d.kind === 'busy' && (
-            <Field label="When">
+            <Field label="When" group>
               <Segmented
                 value={d.allDay ? 'all' : 'part'}
                 options={[
@@ -189,6 +217,16 @@ export function OverridesSection() {
               </Field>
               <Field label="Until">
                 <TimeInput value={d.end} onChange={(end) => set({ ...d, end })} />
+              </Field>
+            </>
+          )}
+          {d.kind === 'free' && (
+            <>
+              <Field label="Energy" group>
+                <Segmented value={d.energy} options={ENERGY_OPTIONS} onChange={(energy) => set({ ...d, energy })} />
+              </Field>
+              <Field label="Use it for (optional)" group>
+                <GoalChips goals={boostableGoals(goals)} value={d.boostGoalIds} onChange={(boostGoalIds) => set({ ...d, boostGoalIds })} />
               </Field>
             </>
           )}

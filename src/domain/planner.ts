@@ -19,7 +19,7 @@
 import { addDays, differenceInCalendarDays, format, parseISO, startOfWeek } from 'date-fns'
 import type { Goal, ISODate, Rule, Session, Settings } from '../db/types'
 import { buildDay, makeTravel, type DayLayout, type FreeSlot, type SlotInput } from './freeSlots'
-import { subtract, type Range } from './ranges'
+import { intersect, subtract, type Range } from './ranges'
 import { formatDuration, fromMinutes, toMinutes } from './time'
 
 // ---------- Public types ----------
@@ -269,14 +269,14 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
   // "Skip" means "not this goal today": nothing new for that goal on a day it was skipped.
   const skippedOn = new Set(state.sessions.filter((s) => s.status === 'skipped' && s.goalId).map((s) => `${s.goalId}|${s.date}`))
 
-  /** Best spot for exactly `len` minutes of `goal` on `day`, or undefined. */
-  const bestSpot = (day: Day, goal: Goal, len: number): Placement | undefined => {
+  /** Best spot for exactly `len` minutes of `goal` on `day` (optionally only `within` some ranges), or undefined. */
+  const bestSpot = (day: Day, goal: Goal, len: number, within?: readonly Range[]): Placement | undefined => {
     if (skippedOn.has(`${goal.id}|${day.date}`)) return undefined
     if (day.goalMin + len > day.capMin) return undefined
     if (goal.focus === 'demanding' && day.demandingMin + len > day.demandingCapMin) return undefined
     const win = categoryWindow(goal)
     let best: Placement | undefined
-    for (const slot of day.free) {
+    for (const slot of within ? intersect(day.free, within) : day.free) {
       const t = travelFor(goal, slot)
       const starts = new Set<number>()
       starts.add(Math.max(slot.start + t, win.start)) // as early as possible
@@ -295,9 +295,9 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
   }
 
   /** Longest spot between `max` and `min` minutes (5-min steps). */
-  const bestSpotUpTo = (day: Day, goal: Goal, max: number, min: number): Placement | undefined => {
+  const bestSpotUpTo = (day: Day, goal: Goal, max: number, min: number, within?: readonly Range[]): Placement | undefined => {
     for (let len = floor5(max); len >= min; len -= STEP) {
-      const p = bestSpot(day, goal, len)
+      const p = bestSpot(day, goal, len, within)
       if (p) return p
     }
     return undefined
@@ -357,6 +357,16 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
   /** Usable minutes on a day for planning purposes (free time limited by the cap). */
   const usable = (d: Day) => Math.min(d.free.reduce((s, f) => s + f.end - f.start, 0), d.capMin - d.goalMin)
 
+  // extra free time with "use it for": date → goals + the windows they may use
+  const boosts = new Map<ISODate, { goalIds: Set<string>; windows: Range[] }>()
+  for (const o of state.setup.availabilityOverrides) {
+    if (o.kind !== 'free' || !o.start || !o.end || !o.boostGoalIds?.length || o.date < from || o.date > to) continue
+    const b = boosts.get(o.date) ?? { goalIds: new Set<string>(), windows: [] }
+    for (const id of o.boostGoalIds) b.goalIds.add(id)
+    b.windows.push({ start: toMinutes(o.start), end: toMinutes(o.end) })
+    boosts.set(o.date, b)
+  }
+
   // ----- 3 + 4. deadline goals -----
   const deadlineGoals = goals.filter((g) => g.type === 'deadline' && g.deadline && g.deadline > today)
 
@@ -398,13 +408,39 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
       a.name.localeCompare(b.name),
   )
 
+  // "Extra free time … use it for X": deadline goals pull work into that time first (the user's
+  // explicit choice wins over the ramp), so the other days get lighter; the total stays the same.
+  const boostPlaced = new Map<string, number>()
+  const boostedDays = new Map<string, Set<ISODate>>()
   for (const g of deadlineOrder) {
-    let remaining = remainingOf(g)
+    let left = remainingOf(g)
+    for (const day of studyDaysOf(g)) {
+      const b = boosts.get(day.date)
+      if (!b?.goalIds.has(g.id)) continue
+      // several goals chosen for the same extra time share the day's cap fairly
+      const sharers = [...b.goalIds].filter((id) => goals.some((x) => x.id === id && x.type !== 'recurring')).length
+      let budget = floor5(day.capMin / Math.max(1, sharers))
+      let guard = 0
+      while (left >= STEP && budget >= g.minSession && guard++ < 20) {
+        const len = Math.min(budget, Math.max(g.minSession, Math.min(g.maxSession, ceil5(left))))
+        const p = bestSpotUpTo(day, g, len, g.minSession, b.windows)
+        if (!p) break
+        left -= commit(day, g, p, 'goal')
+        budget -= p.end - p.start
+        boostPlaced.set(g.id, (boostPlaced.get(g.id) ?? 0) + (p.end - p.start))
+        boostedDays.set(g.id, (boostedDays.get(g.id) ?? new Set()).add(day.date))
+      }
+    }
+  }
+
+  for (const g of deadlineOrder) {
+    let remaining = remainingOf(g) - (boostPlaced.get(g.id) ?? 0)
     if (remaining <= 0) continue
     const studyDays = studyDaysOf(g)
     // Ramp only over days with room for at least one session, so days without free time
-    // (e.g. weekends) don't pile their share onto the next day.
-    const rampDays = studyDays.filter((d) => usable(d) >= g.minSession)
+    // (e.g. weekends) don't pile their share onto the next day. Days that already took
+    // boosted work for this goal have had their share.
+    const rampDays = studyDays.filter((d) => !boostedDays.get(g.id)?.has(d.date) && usable(d) >= g.minSession)
     const n = rampDays.length
     const weights = rampDays.map((_, i) => (n > 1 ? RAMP_START + ((RAMP_END - RAMP_START) * i) / (n - 1) : 1))
     const wSum = weights.reduce((a, b) => a + b, 0)
@@ -609,6 +645,26 @@ export function plan(state: PlanState, today: ISODate, options: PlanOptions = {}
           ? `“${g.name}” gets less than ${formatDuration(g.minutesPerWeek!)} in ${shortDates.length} week${shortDates.length === 1 ? '' : 's'}.`
           : `“${g.name}” gets less than ${formatDuration(g.minutesPerDay!)} on ${shortDates.length} day${shortDates.length === 1 ? '' : 's'}.`,
       })
+    }
+  }
+
+  // ----- 6b. extra free time "use it for" ongoing / book goals: beyond the usual target -----
+  for (const day of days) {
+    const b = boosts.get(day.date)
+    if (!b) continue
+    const gs = ongoing.filter((g) => b.goalIds.has(g.id) && !(g.type === 'ongoing' && g.endDate && day.date > g.endDate))
+    let progress = gs.length > 0
+    let guard = 0
+    while (progress && guard++ < 50) {
+      progress = false
+      for (const g of gs) {
+        // take turns, one session each, until the extra time (or the daily cap) is used up
+        const p = bestSpotUpTo(day, g, g.maxSession, g.minSession, b.windows)
+        if (p) {
+          commit(day, g, p, 'goal')
+          progress = true
+        }
+      }
     }
   }
 

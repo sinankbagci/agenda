@@ -106,6 +106,13 @@ export interface AvailabilityOverride {
   start?: TimeOfDay
   end?: TimeOfDay
   kind: 'busy' | 'free'
+  /** Extra free time only: energy of that time (default normal). */
+  energy?: Energy
+  /**
+   * Extra free time only: "use it for" these goals. Deadline goals pull work into it;
+   * ongoing / book goals may go beyond their usual target there.
+   */
+  boostGoalIds?: string[]
 }
 
 export interface MealRule {
@@ -174,6 +181,8 @@ export interface Session {
   actualMinutes?: number
   note?: string
   frozen: boolean
+  /** Placed by the user at a chosen time ("+ Add" → Goal session). Always also frozen. */
+  pinned?: boolean
   /** Display label for meals ("Lunch"); goal sessions use the goal's name. */
   label?: string
   mealId?: string

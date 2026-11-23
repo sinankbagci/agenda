@@ -5,7 +5,24 @@ import type { Check } from '../domain/setupValidation'
 import type { Weekday } from '../db/types'
 import { WEEKDAYS_MON_FIRST, WEEKDAY_SHORT } from '../domain/time'
 
-export function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
+/**
+ * A labelled form field. Use `group` when the field holds several buttons (segmented control,
+ * chips, weekday picker, swatches): a <label> around several buttons is tied to the first one,
+ * so tapping the field's title or hint would press it (and screen readers mis-name it).
+ */
+export function Field({ label, hint, children, group }: { label: string; hint?: ReactNode; children: ReactNode; group?: boolean }) {
+  const id = useId()
+  if (group) {
+    return (
+      <div className="field" role="group" aria-labelledby={id}>
+        <span className="field-label" id={id}>
+          {label}
+        </span>
+        {children}
+        {hint && <span className="field-hint">{hint}</span>}
+      </div>
+    )
+  }
   return (
     <label className="field">
       <span className="field-label">{label}</span>

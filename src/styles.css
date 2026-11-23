@@ -701,3 +701,24 @@ a.tl-link:active { background: var(--accent-soft); }
 .st-text.st-skipped { color: var(--muted); }
 .notes-list .note-item { min-height: 0; }
 .notes-list .row-main { flex-direction: column; align-items: flex-start; }
+
+/* ---------- + Add ---------- */
+.add-btn { font-size: 1rem !important; }
+.add-sheet .segmented { margin-bottom: 12px; }
+.add-sheet > .muted { margin: 4px 0 14px; }
+.goal-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.goal-chip {
+  --goal: var(--accent);
+  min-height: var(--tap);
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 2px solid var(--goal);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+}
+.goal-chip.on { background: var(--goal); color: #fff; }
+.badge.pinned { background: transparent; padding: 0 2px; font-size: 0.95rem; }
+.pinned-info { padding: 10px 14px; border-radius: 12px; background: var(--bg); margin: 0 0 14px; }
+div.field[role='group'] .segmented, div.field[role='group'] .goal-chips { align-self: flex-start; }

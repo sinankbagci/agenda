@@ -10,6 +10,7 @@ import { Timeline } from './Timeline'
 import { usePlanData } from './usePlanData'
 import { WarningsBanner } from './WarningsBanner'
 import { SessionSheet, type SheetMode } from './SessionSheet'
+import { AddToDaySheet } from './AddToDaySheet'
 import { complete, partial, skip, undo, withNote } from '../../domain/sessions'
 import type { Session } from '../../db/types'
 import { enqueueReplan } from '../../app/usePlanKeeper'
@@ -34,6 +35,7 @@ export function DayScreen() {
   const [sheet, setSheet] = useState<{ id: string; mode: SheetMode } | null>(null)
   const [celebrating, setCelebrating] = useState<string>()
   const [replanning, setReplanning] = useState(false)
+  const [adding, setAdding] = useState(false)
   const timers = useRef<number[]>([])
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
   const later = (fn: () => void, ms: number) => timers.current.push(window.setTimeout(fn, ms))
@@ -96,6 +98,11 @@ export function DayScreen() {
           <p className="muted head-sub">{format(parseISO(date), 'EEEE d MMMM yyyy')}</p>
         </div>
         <div className="pager">
+          {date >= today && (
+            <button type="button" className="btn primary add-btn" onClick={() => setAdding(true)}>
+              + Add
+            </button>
+          )}
           <button type="button" className="btn" aria-label="Previous day" onClick={() => shift(-1)}>
             ‹
           </button>
@@ -153,6 +160,18 @@ export function DayScreen() {
         </div>
       )}
 
+      {adding && (
+        <AddToDaySheet
+          date={date}
+          today={today}
+          onClose={() => setAdding(false)}
+          onSaved={(d) => {
+            setAdding(false)
+            if (d !== date) navigate(d === today ? '/today' : `/day/${d}`)
+          }}
+        />
+      )}
+
       {sheet && sheetSession && data && (
         <SessionSheet
           key={`${sheet.id}-${sheet.mode}`}
@@ -175,6 +194,11 @@ export function DayScreen() {
             setSheet(null)
           }}
           onNote={(note) => void repos.sessions.put(withNote(sheetSession, note))}
+          onRemove={async () => {
+            await repos.sessions.remove(sheetSession.id)
+            setSheet(null)
+            void enqueueReplan(sheetSession.date === today ? { includeToday: true } : undefined)
+          }}
         />
       )}
     </section>
