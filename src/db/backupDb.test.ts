@@ -19,7 +19,7 @@ async function seed() {
   await r.sessions.bulkPut([sessionRow({ goalId: g.id }), sessionRow({ goalId: g.id, status: 'done' })])
   await r.checkIns.put({ date: '2026-11-22', energy: 4, mood: 5 })
   await r.stats.put({ goalId: g.id, bucket: 'evening', attempts: 2, completions: 2, focusMinutes: 90 })
-  await r.activeTimer.set({ goalId: g.id, phase: 'work', phaseStartedAt: NOW - 60_000, phaseLength: 25, cycle: 1 })
+  await r.activeTimer.set({ goalId: g.id, phase: 'work', phaseStartedAt: NOW - 60_000, phaseLength: 25, cycle: 1, runStartedAt: 1000, config: { work: 25, shortBreak: 5, longBreak: 15, cyclesBeforeLong: 4 }, targets: [] })
   await db.meta.put({ key: 'storagePersisted', value: 'true' })
   return { db, r }
 }

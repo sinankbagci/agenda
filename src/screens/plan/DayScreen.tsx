@@ -11,6 +11,7 @@ import { usePlanData } from './usePlanData'
 import { WarningsBanner } from './WarningsBanner'
 import { SessionSheet, type SheetMode } from './SessionSheet'
 import { AddToDaySheet } from './AddToDaySheet'
+import { beginFocus } from '../focus/FocusScreen'
 import { complete, partial, skip, undo, withNote } from '../../domain/sessions'
 import type { Session } from '../../db/types'
 import { enqueueReplan } from '../../app/usePlanKeeper'
@@ -194,6 +195,11 @@ export function DayScreen() {
             setSheet(null)
           }}
           onNote={(note) => void repos.sessions.put(withNote(sheetSession, note))}
+          onFocus={async () => {
+            await beginFocus(sheetSession.goalId!, sheetSession.id)
+            setSheet(null)
+            navigate('/focus')
+          }}
           onRemove={async () => {
             await repos.sessions.remove(sheetSession.id)
             setSheet(null)

@@ -163,8 +163,8 @@ describe('sessions, timer, check-ins, stats', () => {
 
   it('keeps a single active timer row', async () => {
     expect(await r.activeTimer.get()).toBeUndefined()
-    await r.activeTimer.set({ goalId: 'g', phase: 'work', phaseStartedAt: 1000, phaseLength: 25, cycle: 1 })
-    await r.activeTimer.set({ goalId: 'g', phase: 'break', phaseStartedAt: 2000, phaseLength: 5, cycle: 1 })
+    await r.activeTimer.set({ goalId: 'g', phase: 'work', phaseStartedAt: 1000, phaseLength: 25, cycle: 1, runStartedAt: 1000, config: { work: 25, shortBreak: 5, longBreak: 15, cyclesBeforeLong: 4 }, targets: [] })
+    await r.activeTimer.set({ goalId: 'g', phase: 'break', phaseStartedAt: 2000, phaseLength: 5, cycle: 1, runStartedAt: 1000, config: { work: 25, shortBreak: 5, longBreak: 15, cyclesBeforeLong: 4 }, targets: [] })
     expect(await db.activeTimer.count()).toBe(1)
     expect(await r.activeTimer.get()).toMatchObject({ id: 'active', phase: 'break' })
     await r.activeTimer.clear()
