@@ -73,7 +73,7 @@ export function deadlineProgress(goal: Goal, sessions: readonly Session[], today
 
   let status: DeadlineStatus
   let gapMinutes = 0
-  if (doneMinutes >= totalMinutes) status = 'done'
+  if (doneMinutes >= totalMinutes || goal.completedAt) status = 'done'
   else if (shortfallMinutes > 0) {
     status = 'atRisk'
     gapMinutes = shortfallMinutes
@@ -82,7 +82,8 @@ export function deadlineProgress(goal: Goal, sessions: readonly Session[], today
     gapMinutes = expectedMinutes - doneMinutes
   } else status = doneMinutes > expectedMinutes + 60 ? 'ahead' : 'onTrack'
 
-  return { doneMinutes, totalMinutes, ratio: totalMinutes ? Math.min(1, doneMinutes / totalMinutes) : 0, daysLeft, expectedMinutes, status, gapMinutes }
+  const ratio = goal.completedAt ? 1 : totalMinutes ? Math.min(1, doneMinutes / totalMinutes) : 0
+  return { doneMinutes, totalMinutes, ratio, daysLeft, expectedMinutes, status, gapMinutes }
 }
 
 // ---------- Streaks ----------
@@ -116,8 +117,11 @@ function runs(periods: Period[]): { current: number; best: number } {
  * The target is capped by what was actually planned that day/week (if only 3 of 4 workouts
  * fitted, doing those 3 keeps the streak).
  */
-export function streak(goal: Goal, sessions: readonly Session[], today: ISODate, logs?: readonly LogEntry[]): Streak | undefined {
-  const mine = ofGoal(sessions, goal.id)
+export function streak(goal: Goal, sessions: readonly Session[], today: ISODate, allLogs?: readonly LogEntry[]): Streak | undefined {
+  // only what happened up to `today` (also when asked "as of" an earlier day, e.g. the weekly review)
+  const all = ofGoal(sessions, goal.id) // what was planned (for the target cap)
+  const mine = all.filter((s) => s.date <= today) // what happened (done / met)
+  const logs = allLogs?.filter((l) => l.date <= today)
   const created = iso(new Date(goal.createdAt))
   const firstSession = mine.map((s) => s.date).sort()[0]
   const start = firstSession && firstSession < created ? firstSession : created
@@ -131,18 +135,19 @@ export function streak(goal: Goal, sessions: readonly Session[], today: ISODate,
   if (weekly) {
     for (let w = weekOf(start); w <= weekOf(today); w = add(w, 7)) {
       const inWeek = mine.filter((s) => s.date >= w && s.date <= add(w, 6))
+      const plannedInWeek = all.filter((s) => s.date >= w && s.date <= add(w, 6))
       const current = w === weekOf(today)
       let met: boolean
       let neutral: boolean
       const inRange = (d: ISODate) => d >= w && d <= add(w, 6)
       const loggedCount = loggedSessions(goal.id, logs, inRange)
       if (goal.type === 'recurring') {
-        const target = Math.min(goal.perWeek ?? 1, inWeek.length + loggedCount || (goal.perWeek ?? 1))
+        const target = Math.min(goal.perWeek ?? 1, plannedInWeek.length + loggedCount || (goal.perWeek ?? 1))
         const done = inWeek.filter((s) => s.status === 'done').length + loggedCount
         met = done >= target
         neutral = inWeek.length === 0 && loggedCount === 0
       } else {
-        const plannedMin = inWeek.reduce((m, s) => m + planned(s), 0)
+        const plannedMin = plannedInWeek.reduce((m, s) => m + planned(s), 0)
         const target = Math.min(goal.minutesPerWeek ?? 0, plannedMin || (goal.minutesPerWeek ?? 0))
         met = inWeek.reduce((m, s) => m + countedMinutes(s), 0) + loggedMinutes(goal.id, logs, inRange) >= target
         neutral = inWeek.length === 0 && loggedCount === 0

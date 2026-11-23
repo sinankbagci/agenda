@@ -42,7 +42,7 @@ Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's fe
 11. Progress & streaks  ← done
 12. Activity log, check-in, backlog lists  ← done
 13. Learning from the log  ← done
-14. Weekly review
+14. Weekly review  ← done (incl. the “+ Add” polish and one-off tasks)
 15. Apple Calendar `.ics` export
 16. Quick add parser + tests
 17. Year in review
@@ -111,11 +111,14 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - Planner rules added here: a goal skipped on a day gets nothing new that day; ramp shares subtract work already kept on that day; `notBefore` (minutes) keeps "Re-plan today" after now, and `replan(..., { includeToday })` freezes today's already-started planned sessions first.
 - UI: big ✓ (`.check`), `SwipeRow` (right = done, left = Part/Skip or Undo; gesture distance kept in a ref, the click ending a swipe is swallowed), `SessionSheet` (modes actions / part / note), `playChime` (Web Audio, called inside the tap) when `settings.completionSound`, `Burst` confetti, "Re-plan the rest of today" on Today, session notes on the goal page.
 
-## One-off additions (“+ Add” on a day; src/domain/oneOff.ts, AddToDaySheet) — added between steps 8 and 9, polish in step 14
+## One-off additions (“+ Add” on a day; src/domain/oneOff.ts, AddToDaySheet)
 
 - **Event** → a locked one-off `FixedBlock` (`rule.kind = 'once'`); travel comes from the free-slot builder.
 - **Goal session** → a stored session with `frozen: true, pinned: true` (id `pin:<uuid>`); the planner keeps it and counts it toward the goal; removable from its sheet (📌).
 - **Extra free time** → one `AvailabilityOverride` (kind `free`) per day with `energy` and optional `boostGoalIds` (“use it for”). Planner: deadline goals pull work into the boosted windows first (fair share of the day's cap among boosted goals; those days leave the ramp), ongoing/book goals fill the windows beyond their target after their normal fill. Caps still apply.
+- **Task** (one-off goal, e.g. homework): `taskToGoal` → deadline goal with `oneOff: true`, `deadline` = day after "do it by", `reviewDays` 0, sessions ≤ 2 h, icon 📋. `finishTask` sets `completedAt`, marks the session done and deletes the task's other planned sessions; the planner skips goals with `completedAt`. Tasks have their own section on Goals, `TaskEditCard` on the detail screen (not the goal form), are excluded from learning/streaks.
+- Multi-day extra free time / busy days share `groupId` and are listed, edited and deleted as one (`groupOverrides`, `OverridesSection`, which also takes an optional date range).
+- Day view: tapping a 🔒 block opens `FixedSheet` (edit; one-offs can be deleted); 📌 sessions can "Change time".
 - Saving re-plans; anything that touches today re-plans today too (`includeToday`).
 - `Field` has a `group` mode — use it for any field holding several buttons (segmented, chips, weekday picker, swatches); a `<label>` around buttons gets tied to the first one.
 
@@ -150,3 +153,10 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - Derived on the fly from the last 28 days (the `Stats` table stays unused — a cache could go stale). `credit`: done 1, partial actual/planned, skipped/missed 0. `completionByBucket` per goal per morning/afternoon/evening; planner adds `bucketBonus` = (bucket rate − goal's overall rate) × 4, clamped ±2, only with ≥ 3 attempts in the bucket and ≥ 6 overall.
 - Suggestions (user confirms; dismissals in meta `dismissedSuggestions` by key): `energySuggestions` groups windows by start/end/energy (e.g. Sat+Sun → "on weekends"), needs ≥ 14 days of history and ≥ 4 sessions; ≥ 85% done → high (unless check-ins avg < 3), high with ≤ 45% → normal, ≤ 30% and check-ins ≤ 2 → low. `sessionLengthSuggestions`: ≥ 5 recent sessions with real minutes, median ratio ≤ 0.75 or ≥ 1.25 → `applySessionLength`. `estimateHint` (new deadline goals): finished same-category deadline goals' actual/planned (sessions + logs), shown when off by ≥ 15%; once used or kept it stays hidden for that form (it would otherwise re-multiply).
 - UI: `SuggestionsCard` on Today (below the timeline) and on the goal page (session length for that goal); `EstimateHintCard` under the deadline hours in the new-goal form. Applying changes plan inputs → re-plan happens by itself.
+
+## Weekly review (src/domain/review.ts, src/screens/review)
+
+- `reviewWeek(today)`: Sunday → the coming week, otherwise the current one. `ReviewBanner` on Today until that week has a `WeeklyReview` (or "Not now", meta `reviewDismissed`).
+- `lastWeekSummary`: time per goal/category (sessions + linked logs), sessions done/partial/skipped/missed of planned, streak changes (after = as of the review week's Monday; before = as of last week's Monday for weekly streaks, the Sunday before for daily ones), deadline goals behind / at risk, average check-in energy/mood. `nextWeekPreview`: planned minutes per day, deadlines/tasks in the next two weeks.
+- `streak()` only counts sessions/logs up to its `today` (needed for "as of" questions) but caps weekly targets by everything planned that week.
+- `/review`: quick adjustments save immediately (priority, pause/resume, deadline hours, busy/free time in that week) and are recorded as plain notes in `WeeklyReview.adjustments`; "Confirm week" stores the review and goes to Today.

@@ -120,13 +120,117 @@ export function pinnedSession(d: GoalSessionDraft, goal: Goal, id: string): Sess
   return s
 }
 
-/** One free-time override per day in the range. */
-export function extraTimeOverrides(d: ExtraTimeDraft): Omit<AvailabilityOverride, 'id'>[] {
+/** One free-time override per day in the range, sharing `groupId` so they list and edit as one. */
+export function extraTimeOverrides(d: ExtraTimeDraft, groupId?: string): Omit<AvailabilityOverride, 'id'>[] {
   const out: Omit<AvailabilityOverride, 'id'>[] = []
   for (let date = d.from; date <= d.to; date = format(addDays(parseISO(date), 1), 'yyyy-MM-dd')) {
     const o: Omit<AvailabilityOverride, 'id'> = { date, kind: 'free', start: d.start, end: d.end, energy: d.energy }
+    if (groupId) o.groupId = groupId
     if (d.boostGoalIds.length) o.boostGoalIds = [...d.boostGoalIds]
     out.push(o)
   }
   return out
+}
+
+// ---------- One-off tasks ("homework due tomorrow, 2 hours") ----------
+
+export interface TaskDraft {
+  title: string
+  /** How long it takes, in minutes. */
+  minutes: number
+  /** Last day to work on it (inclusive). */
+  doBy: ISODate
+  category: Goal['category']
+  focus: Goal['focus']
+}
+
+export const TASK_MAX_SESSION = 120
+
+export function validateTask(d: TaskDraft, today: ISODate): Check {
+  const c: Check = { errors: [], warnings: [] }
+  if (!d.title.trim()) c.errors.push('Say what the task is.')
+  if (!(Number.isInteger(d.minutes) && d.minutes >= 10 && d.minutes <= 12 * 60)) c.errors.push('How long: between 10 minutes and 12 hours.')
+  dateNotPast(c, d.doBy, today, '“do it by” day')
+  return c
+}
+
+/**
+ * A task is a small deadline goal the planner fits in before it's due: deadline = the day after
+ * "do it by", no review days, sessions of up to 2 h (shorter tasks: one session).
+ */
+export function taskToGoal(d: TaskDraft, color: string, createdAt: number): Omit<Goal, 'id'> {
+  const maxSession = Math.min(d.minutes, TASK_MAX_SESSION)
+  return {
+    type: 'deadline',
+    oneOff: true,
+    name: d.title.trim(),
+    category: d.category,
+    color,
+    icon: '📋',
+    priority: 2,
+    focus: d.focus,
+    minSession: Math.min(maxSession, 30),
+    maxSession,
+    active: true,
+    deadline: format(addDays(parseISO(d.doBy), 1), 'yyyy-MM-dd'),
+    totalHours: d.minutes / 60,
+    reviewDays: 0,
+    createdAt,
+  }
+}
+
+export function goalToTask(g: Goal): TaskDraft {
+  return {
+    title: g.name,
+    minutes: Math.round((g.totalHours ?? 1) * 60),
+    doBy: format(addDays(parseISO(g.deadline!), -1), 'yyyy-MM-dd'),
+    category: g.category,
+    focus: g.focus,
+  }
+}
+
+/** "Do it by Tue 24 Nov" */
+export const taskDoBy = (g: Pick<Goal, 'deadline'>) => (g.deadline ? format(addDays(parseISO(g.deadline), -1), 'EEE d MMM') : '')
+
+/**
+ * "When I'm done I complete that one-off goal": the task is finished, the session it was
+ * finished in is done, and everything else still planned for it is dropped (the planner skips
+ * completed tasks). Returns the session updates.
+ */
+export function finishTask(task: Goal, sessions: readonly Session[], fromSessionId: string | undefined, now: number): { goal: Partial<Goal>; done: Session[]; removeIds: string[] } {
+  const mine = sessions.filter((s) => s.goalId === task.id && (s.kind === 'goal' || s.kind === 'review'))
+  const from = mine.find((s) => s.id === fromSessionId)
+  const done: Session[] = []
+  if (from && (from.status === 'planned' || from.status === 'partial')) {
+    done.push({ ...from, status: 'done', actualMinutes: from.actualMinutes && from.status === 'partial' ? Math.max(from.actualMinutes, minutes(from)) : minutes(from) })
+  }
+  const removeIds = mine.filter((s) => s.status === 'planned' && s.id !== from?.id).map((s) => s.id)
+  return { goal: { completedAt: now }, done, removeIds }
+}
+
+const minutes = (s: Pick<Session, 'start' | 'end'>) => toMinutes(s.end) - toMinutes(s.start)
+
+// ---------- Extra free time as one entry ----------
+
+export interface OverrideGroup {
+  key: string
+  ids: string[]
+  from: ISODate
+  to: ISODate
+  override: AvailabilityOverride
+}
+
+/** Overrides saved together (same groupId) are listed as one entry; others stay single. */
+export function groupOverrides(overrides: readonly AvailabilityOverride[]): OverrideGroup[] {
+  const groups = new Map<string, AvailabilityOverride[]>()
+  for (const o of overrides) {
+    const k = o.groupId ?? o.id
+    groups.set(k, [...(groups.get(k) ?? []), o])
+  }
+  return [...groups]
+    .map(([key, os]) => {
+      const sorted = [...os].sort((a, b) => a.date.localeCompare(b.date))
+      return { key, ids: sorted.map((o) => o.id), from: sorted[0]!.date, to: sorted.at(-1)!.date, override: sorted[0]! }
+    })
+    .sort((a, b) => a.from.localeCompare(b.from))
 }

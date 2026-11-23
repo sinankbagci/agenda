@@ -905,3 +905,44 @@ div.field[role='group'] .segmented, div.field[role='group'] .goal-chips { align-
 .suggestion p { margin: 0 0 10px; }
 .estimate-hint { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-radius: 12px; background: var(--accent-soft); margin-bottom: 12px; }
 .estimate-hint span { flex: 1; min-width: 220px; }
+
+/* ---------- Tasks, fixed sheet, move ---------- */
+.tl-fixed-btn { width: 100%; font: inherit; text-align: left; cursor: pointer; }
+.pinned-info { display: flex; flex-direction: column; gap: 8px; }
+.move-box { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.move-box .input { width: auto; }
+.task-info { margin: 0 0 12px; }
+.task-row { --goal: var(--accent); display: flex; align-items: center; gap: 12px; padding: 10px 14px; min-height: 60px; background: var(--surface); border: 1px solid var(--border); border-left: 6px solid var(--goal); border-radius: var(--radius); }
+.task-row.done { opacity: 0.7; }
+.task-row.done strong { text-decoration: line-through; }
+.task-main { flex: 1; display: flex; flex-direction: column; gap: 2px; color: var(--text); text-decoration: none; min-height: var(--tap); justify-content: center; }
+.done-tasks { max-width: 720px; margin-top: 16px; }
+.done-tasks summary { cursor: pointer; font-weight: 600; color: var(--muted); min-height: var(--tap); display: flex; align-items: center; }
+
+/* ---------- Weekly review ---------- */
+.review-screen .card { max-width: 720px; margin-bottom: 12px; }
+.stat-of { font-size: 1rem; color: var(--muted); font-weight: 500; }
+.hbars { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.hbars li { --goal: var(--accent); display: grid; grid-template-columns: minmax(90px, 30%) 1fr auto; align-items: center; gap: 10px; }
+.hbar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar-track { height: 16px; }
+.hbar { display: block; height: 100%; min-width: 4px; border-radius: 0 4px 4px 0; background: color-mix(in srgb, var(--goal) 85%, black); }
+@media (prefers-color-scheme: dark) { .hbar { background: color-mix(in srgb, var(--goal) 70%, white); } }
+.hbar-value { font-variant-numeric: tabular-nums; font-weight: 600; }
+.review-list { list-style: none; padding: 0; margin: 0 0 12px; max-width: 720px; display: flex; flex-direction: column; gap: 6px; }
+.review-list a { color: var(--accent); font-weight: 600; }
+.week-preview { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.week-preview a { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text); text-decoration: none; min-height: var(--tap); }
+.wp-track { height: 90px; width: 24px; display: flex; align-items: flex-end; border-bottom: 1px solid var(--border); }
+.wp-bar { width: 100%; border-radius: 4px 4px 0 0; background: var(--accent); min-height: 0; }
+.wp-value { font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wp-day { font-size: 0.85rem; font-weight: 600; }
+.review-issues p { margin: 0 0 6px; color: var(--warn); }
+.adjust-list { padding: 0; }
+.adjust-row { --goal: var(--accent); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-left: 5px solid var(--goal); }
+.adjust-row.paused { opacity: 0.6; }
+.adjust-name { flex: 1; min-width: 140px; }
+.adjust-hours { display: flex; align-items: center; gap: 6px; }
+.adjust-hours .input { max-width: 90px; }
+.confirm-row { max-width: 720px; margin: 24px 0; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.review-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; max-width: 720px; margin-bottom: 16px; border-color: var(--accent); }

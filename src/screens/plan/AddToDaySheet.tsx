@@ -11,6 +11,9 @@ import {
   validateEvent,
   validateExtraTime,
   validateGoalSession,
+  validateTask,
+  taskToGoal,
+  type TaskDraft,
   type EventDraft,
   type ExtraTimeDraft,
   type GoalSessionDraft,
@@ -18,12 +21,15 @@ import {
 import type { Check } from '../../domain/setupValidation'
 import { fromMinutes, toMinutes, isTime } from '../../domain/time'
 import { enqueueReplan } from '../../app/usePlanKeeper'
-import { DateInput, Field, LocationSelect, Problems, Segmented, TextInput, TimeInput, hasErrors } from '../../ui/form'
+import { DateInput, Field, LocationSelect, NumberInput, Problems, Segmented, TextInput, TimeInput, hasErrors } from '../../ui/form'
 import { GoalChips, boostableGoals } from '../../ui/GoalChips'
+import { CATEGORIES, COLORS } from '../../domain/goals'
+import { formatDuration } from '../../domain/time'
 
-type Tab = 'event' | 'session' | 'extra'
+type Tab = 'task' | 'event' | 'session' | 'extra'
 
 const TABS = [
+  { value: 'task', label: 'Task' },
   { value: 'event', label: 'Event' },
   { value: 'session', label: 'Goal session' },
   { value: 'extra', label: 'Extra free time' },
@@ -44,12 +50,13 @@ const nextDay = (d: string) => format(addDays(parseISO(d), 1), 'yyyy-MM-dd')
  * if it touches today, today is re-planned too (the user asked for it explicitly).
  */
 export function AddToDaySheet({ date, today, onClose, onSaved }: { date: string; today: string; onClose: () => void; onSaved: (date: string) => void }) {
-  const [tab, setTab] = useState<Tab>('event')
+  const [tab, setTab] = useState<Tab>('task')
   const [tried, setTried] = useState(false)
   const goals = useLiveQuery(() => repos.goals.all(), [], [] as Goal[])
   const fixedBlocks = useLiveQuery(() => repos.fixedBlocks.all(), [], [])
 
   const [event, setEvent] = useState<EventDraft>({ title: '', date, start: '13:00', end: '15:00' })
+  const [task, setTask] = useState<TaskDraft>({ title: '', minutes: 60, doBy: date, category: 'Study', focus: 'demanding' })
   const [session, setSession] = useState<GoalSessionDraft>({ goalId: '', date, start: '10:00', end: '11:00' })
   const weekendStart = parseISO(date).getDay() === 6
   const [extra, setExtra] = useState<ExtraTimeDraft>({
@@ -61,12 +68,14 @@ export function AddToDaySheet({ date, today, onClose, onSaved }: { date: string;
     boostGoalIds: [],
   })
 
-  const checkDate = tab === 'event' ? event.date : tab === 'session' ? session.date : extra.from
+  const checkDate = tab === 'task' ? task.doBy : tab === 'event' ? event.date : tab === 'session' ? session.date : extra.from
   const daySessions = useLiveQuery(() => repos.sessions.byDate(checkDate), [checkDate], [])
 
   const activeFirst = [...goals].sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name))
   let check: Check
-  if (tab === 'event') {
+  if (tab === 'task') {
+    check = validateTask(task, today)
+  } else if (tab === 'event') {
     check = validateEvent(event, today)
     check.warnings.push(...overlapWarnings(event.date, event.start, event.end, fixedBlocks, daySessions, goals))
   } else if (tab === 'session') {
@@ -81,7 +90,12 @@ export function AddToDaySheet({ date, today, onClose, onSaved }: { date: string;
     if (hasErrors(check)) return
     let first = date
     let touchesToday = false
-    if (tab === 'event') {
+    if (tab === 'task') {
+      const color = COLORS[goals.length % COLORS.length]!
+      await repos.goals.add(taskToGoal(task, color, Date.now()))
+      first = date
+      touchesToday = true // it may well need time today
+    } else if (tab === 'event') {
       await repos.fixedBlocks.add(eventToFixedBlock(event))
       first = event.date
       touchesToday = event.date === today
@@ -91,7 +105,8 @@ export function AddToDaySheet({ date, today, onClose, onSaved }: { date: string;
       first = session.date
       touchesToday = session.date === today
     } else {
-      for (const o of extraTimeOverrides(extra)) await repos.availabilityOverrides.add(o)
+      const groupId = crypto.randomUUID() // the days are listed and edited as one entry
+      for (const o of extraTimeOverrides(extra, groupId)) await repos.availabilityOverrides.add(o)
       first = extra.from
       touchesToday = extra.from <= today && today <= extra.to
     }
@@ -114,6 +129,40 @@ export function AddToDaySheet({ date, today, onClose, onSaved }: { date: string;
             setTried(false)
           }}
         />
+
+        {tab === 'task' && (
+          <>
+            <p className="muted">A one-off thing to get done, like homework. It’s planned before your “do it by” day; tick it off when it’s finished.</p>
+            <div className="form-grid">
+              <Field label="What">
+                <TextInput value={task.title} placeholder="Analysis homework" onChange={(title) => setTask({ ...task, title })} />
+              </Field>
+              <Field label="How long" hint={Number.isFinite(task.minutes) && task.minutes > 0 ? formatDuration(task.minutes) : undefined}>
+                <NumberInput value={task.minutes} min={10} step={15} suffix="min" onChange={(minutes) => setTask({ ...task, minutes })} />
+              </Field>
+              <Field label="Do it by" hint="The last day you can work on it.">
+                <DateInput value={task.doBy} onChange={(doBy) => setTask({ ...task, doBy })} />
+              </Field>
+              <Field label="Category">
+                <select className="input" value={task.category} onChange={(e) => setTask({ ...task, category: e.target.value as TaskDraft['category'] })}>
+                  {CATEGORIES.map((c) => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <Field label="Focus" group>
+              <Segmented
+                value={task.focus}
+                options={[
+                  { value: 'demanding', label: 'Demanding' },
+                  { value: 'light', label: 'Light' },
+                ]}
+                onChange={(focus) => setTask({ ...task, focus })}
+              />
+            </Field>
+          </>
+        )}
 
         {tab === 'event' && (
           <>

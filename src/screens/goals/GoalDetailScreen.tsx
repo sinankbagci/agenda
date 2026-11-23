@@ -14,6 +14,8 @@ import { GoalNotes } from './GoalNotes'
 import { TopicsSection } from './TopicsSection'
 import { WeeklyChart } from './WeeklyChart'
 import { SuggestionsCard } from '../learning/Suggestions'
+import { TaskEditCard, finishTaskNow, reopenTask } from './TaskParts'
+import { taskDoBy } from '../../domain/oneOff'
 import { DeadlineBadge, ProgressBar, StreakChip, useShortfall } from './GoalProgress'
 
 /** /goals/:id — progress, streaks, history chart, stats, topics and notes (SPEC 4.2). */
@@ -25,6 +27,7 @@ export function GoalDetailScreen() {
   const sessions = useLiveQuery(() => db.sessions.where('goalId').equals(id).toArray(), [id], [])
   const logs = useLiveQuery(() => repos.logEntries.byGoal(id), [id], [])
   const shortfall = useShortfall(id)
+  const [editingTask, setEditingTask] = useState(false)
 
   if (goal === undefined) return null
   if (goal === null)
@@ -73,11 +76,38 @@ export function GoalDetailScreen() {
               ◷ Focus
             </button>
           )}
-          <Link to={`/goals/${goal.id}/edit`} className="btn primary">
-            Edit
-          </Link>
+          {goal.oneOff ? (
+            <button type="button" className="btn primary" onClick={() => setEditingTask(!editingTask)}>
+              Edit task
+            </button>
+          ) : (
+            <Link to={`/goals/${goal.id}/edit`} className="btn primary">
+              Edit
+            </Link>
+          )}
         </div>
       </div>
+
+      {goal.oneOff && editingTask && <TaskEditCard goal={goal} today={today} onDone={() => setEditingTask(false)} />}
+      {goal.oneOff && (
+        <div className="card detail-card task-card">
+          <div className="detail-progress-head">
+            <strong>📋 One-off task · do it by {taskDoBy(goal)}</strong>
+            {goal.completedAt ? <span className="status-badge st-done">✓ Finished</span> : null}
+          </div>
+          <div className="button-row">
+            {goal.completedAt ? (
+              <button type="button" className="btn" onClick={() => void reopenTask(goal)}>
+                Reopen
+              </button>
+            ) : (
+              <button type="button" className="btn primary" onClick={() => void finishTaskNow(goal)}>
+                ✓ Finished
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ---- progress by type ---- */}
       {goal.type === 'deadline' && <DeadlineCard p={deadlineProgress(goal, sessions, today, shortfall, logs)} deadline={goal.deadline} />}
@@ -123,7 +153,7 @@ export function GoalDetailScreen() {
         <WeeklyChart data={history} target={weeklyTarget(goal)} color={goal.color} />
       </div>
 
-      {goal.type === 'deadline' && <TopicsSection goalId={goal.id} totalHours={goal.totalHours ?? 0} />}
+      {goal.type === 'deadline' && !goal.oneOff && <TopicsSection goalId={goal.id} totalHours={goal.totalHours ?? 0} />}
       <GoalNotes goalId={goal.id} />
     </section>
   )

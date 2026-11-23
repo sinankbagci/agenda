@@ -11,10 +11,13 @@ import { usePlanData } from './usePlanData'
 import { WarningsBanner } from './WarningsBanner'
 import { SessionSheet, type SheetMode } from './SessionSheet'
 import { AddToDaySheet } from './AddToDaySheet'
+import { FixedSheet } from './FixedSheet'
+import { ReviewBanner } from '../review/ReviewBanner'
 import { CheckInPrompt } from '../log/CheckInPrompt'
 import { SuggestionsCard } from '../learning/Suggestions'
 import { beginFocus } from '../focus/FocusScreen'
 import { complete, partial, skip, undo, withNote } from '../../domain/sessions'
+import { finishTask } from '../../domain/oneOff'
 import type { Session } from '../../db/types'
 import { enqueueReplan } from '../../app/usePlanKeeper'
 import { playChime } from '../../ui/feedback'
@@ -39,6 +42,7 @@ export function DayScreen() {
   const [celebrating, setCelebrating] = useState<string>()
   const [replanning, setReplanning] = useState(false)
   const [adding, setAdding] = useState(false)
+  const [fixedOpen, setFixedOpen] = useState<string | null>(null)
   const timers = useRef<number[]>([])
   useEffect(() => () => timers.current.forEach(clearTimeout), [])
   const later = (fn: () => void, ms: number) => timers.current.push(window.setTimeout(fn, ms))
@@ -64,6 +68,7 @@ export function DayScreen() {
     later(() => setCelebrating(undefined), 1000)
   }
   const handlers = {
+    onOpenFixed: (blockId: string) => setFixedOpen(blockId),
     onOpen: (id: string) => setSheet({ id, mode: 'actions' as const }),
     onPart: (id: string) => setSheet({ id, mode: 'part' as const }),
     onComplete: (id: string) => {
@@ -120,6 +125,7 @@ export function DayScreen() {
         </div>
       </div>
 
+      {isToday && <ReviewBanner today={today} />}
       {isToday && <WarningsBanner />}
 
       {data && progress.total > 0 && (
@@ -167,6 +173,17 @@ export function DayScreen() {
         </div>
       )}
 
+      {fixedOpen && (
+        <FixedSheet
+          blockId={fixedOpen}
+          onClose={() => setFixedOpen(null)}
+          onDeleted={(d) => {
+            setFixedOpen(null)
+            void enqueueReplan(d === today ? { includeToday: true } : undefined)
+          }}
+        />
+      )}
+
       {adding && (
         <AddToDaySheet
           date={date}
@@ -205,6 +222,24 @@ export function DayScreen() {
             await beginFocus(sheetSession.goalId!, sheetSession.id)
             setSheet(null)
             navigate('/focus')
+          }}
+          onFinishTask={async () => {
+            const goal = data.goals.find((g) => g.id === sheetSession.goalId)
+            if (!goal) return
+            const all = await repos.sessions.byGoal(goal.id)
+            const r = finishTask(goal, all, sheetSession.id, Date.now())
+            celebrate(sheetSession.id)
+            await repos.goals.update(goal.id, r.goal)
+            if (r.done.length) await repos.sessions.bulkPut(r.done)
+            for (const id of r.removeIds) await repos.sessions.remove(id)
+            void enqueueReplan()
+            setSheet(null)
+            later(() => setSheet({ id: sheetSession.id, mode: 'note' }), 900)
+          }}
+          onChangeTime={async (d, start, end) => {
+            await repos.sessions.put({ ...sheetSession, date: d, start, end })
+            setSheet(null)
+            void enqueueReplan(d === today || sheetSession.date === today ? { includeToday: true } : undefined)
           }}
           onRemove={async () => {
             await repos.sessions.remove(sheetSession.id)

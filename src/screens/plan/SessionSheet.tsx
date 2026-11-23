@@ -6,7 +6,9 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { repos } from '../../db/repositories'
 import { canComplete, canSkip, lastNoteBefore, plannedMinutes, validatePartialMinutes } from '../../domain/sessions'
 import { formatDuration } from '../../domain/time'
-import { NumberInput } from '../../ui/form'
+import { DateInput, NumberInput, TimeInput } from '../../ui/form'
+import { isTime } from '../../domain/time'
+import { taskDoBy } from '../../domain/oneOff'
 import { logPages, validatePages } from '../../domain/progress'
 
 /** 'part' = actions with the "did part of it" box already open (swipe-left → Part). */
@@ -32,6 +34,8 @@ export function SessionSheet({
   onNote,
   onRemove,
   onFocus,
+  onFinishTask,
+  onChangeTime,
 }: {
   session: Session
   goal: Goal | undefined
@@ -48,12 +52,18 @@ export function SessionSheet({
   onRemove: () => void
   /** Start Focus Mode on this session (today, not finished). */
   onFocus: () => void
+  /** One-off tasks: the task is finished (completes the goal, drops the rest). */
+  onFinishTask: () => void
+  /** Pinned sessions: move to another day / time. */
+  onChangeTime: (date: string, start: string, end: string) => void
 }) {
   const [note, setNote] = useState(session.note ?? '')
   const [partOpen, setPartOpen] = useState(mode === 'part')
   const [minutes, setMinutes] = useState(session.actualMinutes ?? Math.round(plannedMinutes(session) / 2 / 5) * 5)
   const [partError, setPartError] = useState<string>()
   const [page, setPage] = useState<number>(NaN)
+  const [moving, setMoving] = useState(false)
+  const [when, setWhen] = useState({ date: session.date, start: session.start, end: session.end })
   const noteRef = useRef<HTMLTextAreaElement>(null)
   const actionsMode = mode !== 'note'
   const last = lastNoteBefore(session, allSessions)
@@ -95,19 +105,46 @@ export function SessionSheet({
         {actionsMode && <SessionTopics session={session} />}
 
         {session.pinned && actionsMode && (
-          <p className="pinned-info">
-            📌 Added by you at this time — the planner won’t move it.{' '}
+          <div className="pinned-info">
+            <span>📌 Added by you at this time — the planner won’t move it.</span>
             {session.status === 'planned' && (
-              <button
-                type="button"
-                className="btn small link"
-                onClick={() => {
-                  if (window.confirm('Remove this session from your plan?')) onRemove()
-                }}
-              >
-                Remove from plan
-              </button>
+              <span className="button-row">
+                <button type="button" className="btn small" onClick={() => setMoving(!moving)} aria-expanded={moving}>
+                  Change time
+                </button>
+                <button
+                  type="button"
+                  className="btn small link"
+                  onClick={() => {
+                    if (window.confirm('Remove this session from your plan?')) onRemove()
+                  }}
+                >
+                  Remove from plan
+                </button>
+              </span>
             )}
+            {moving && (
+              <div className="move-box">
+                <DateInput value={when.date} onChange={(date) => setWhen({ ...when, date })} />
+                <TimeInput value={when.start} onChange={(start) => setWhen({ ...when, start })} />
+                <span>–</span>
+                <TimeInput value={when.end} onChange={(end) => setWhen({ ...when, end })} />
+                <button
+                  type="button"
+                  className="btn small primary"
+                  disabled={!isTime(when.start) || !isTime(when.end) || when.end <= when.start || when.date < today}
+                  onClick={() => onChangeTime(when.date, when.start, when.end)}
+                >
+                  Save
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {goal?.oneOff && actionsMode && (
+          <p className="muted small task-info">
+            📋 One-off task — do it by {taskDoBy(goal)}. {goal.completedAt ? '✓ Finished.' : 'When it’s finished, tap “Finished the task”: the rest of its time is freed.'}
           </p>
         )}
 
@@ -124,10 +161,17 @@ export function SessionSheet({
                 ◷ Focus
               </button>
             )}
-            {session.status !== 'done' && canComplete(session, today) && (
-              <button type="button" className="btn big" onClick={onComplete}>
-                ✓ Done
+            {goal?.oneOff && !goal.completedAt && canComplete(session, today) && session.status !== 'skipped' ? (
+              <button type="button" className="btn big primary" onClick={onFinishTask}>
+                ✓ Finished the task
               </button>
+            ) : (
+              session.status !== 'done' &&
+              canComplete(session, today) && (
+                <button type="button" className="btn big" onClick={onComplete}>
+                  ✓ Done
+                </button>
+              )
             )}
             {canComplete(session, today) && session.status !== 'skipped' && (
               <button type="button" className="btn big" onClick={() => setPartOpen(!partOpen)} aria-expanded={partOpen}>

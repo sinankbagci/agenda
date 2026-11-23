@@ -17,6 +17,7 @@ import { FocusScreen } from '../screens/focus/FocusScreen'
 import { FocusPill } from '../screens/focus/FocusPill'
 import { LogScreen } from '../screens/log/LogScreen'
 import { ListsScreen } from '../screens/lists/ListsScreen'
+import { WeeklyReviewScreen } from '../screens/review/WeeklyReviewScreen'
 import { useSettings } from '../ui/form'
 
 /** Main layout: sidebar (landscape) / tab bar (portrait). */
@@ -88,11 +89,12 @@ export function App() {
         <Route path="/focus" element={<FocusScreen />} />
         <Route path="/log" element={<LogScreen />} />
         <Route path="/lists" element={<ListsScreen />} />
+        <Route path="/review" element={<WeeklyReviewScreen />} />
         <Route path="/goals" element={<GoalsScreen />} />
         <Route path="/goals/new" element={<GoalEditScreen />} />
         <Route path="/goals/:id" element={<GoalDetailScreen />} />
         <Route path="/goals/:id/edit" element={<GoalEditScreen />} />
-        {NAV_ITEMS.filter((i) => !['/settings', '/goals', '/today', '/week', '/month', '/focus', '/log', '/lists'].includes(i.path)).map((item) => (
+        {NAV_ITEMS.filter((i) => !['/settings', '/goals', '/today', '/week', '/month', '/focus', '/log', '/lists', '/review'].includes(i.path)).map((item) => (
           <Route key={item.path} path={item.path} element={<Placeholder title={item.label} />} />
         ))}
         <Route path="/settings" element={<SettingsScreen />} />
