@@ -540,3 +540,18 @@ describe('activity log counts toward goals (SPEC 4.3)', () => {
     expect(withLog.sessions).toEqual(plain.sessions)
   })
 })
+
+describe('learning in slot scoring (SPEC 3.4)', () => {
+  it('moves a goal toward the time of day it actually gets done', () => {
+    // last two weeks: afternoon midterm sessions were skipped, evening ones done
+    const days = ['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19']
+    const history = days.flatMap((d) => [
+      session({ goalId: 'midterm', date: d, start: '16:00', end: '17:00', status: 'skipped' }),
+      session({ goalId: 'midterm', date: d, start: '20:00', end: '21:00', status: 'done' }),
+    ])
+    const before = goalSessions(plan(withGoals([midterm]), TODAY).sessions, 'midterm')
+    const after = goalSessions(plan(withGoals([midterm], { sessions: history }), TODAY).sessions, 'midterm')
+    expect(before.every((s) => toMinutes(s.start) < 17 * 60)).toBe(true) // high-energy afternoon by default
+    expect(after.every((s) => toMinutes(s.start) >= 17 * 60)).toBe(true) // now in the evening
+  })
+})

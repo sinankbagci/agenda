@@ -41,7 +41,7 @@ Follow `SPEC.md` §7 strictly, one step at a time. Don't start a later step's fe
 10. Topics & spaced review + tests  ← done
 11. Progress & streaks  ← done
 12. Activity log, check-in, backlog lists  ← done
-13. Learning from the log
+13. Learning from the log  ← done
 14. Weekly review
 15. Apple Calendar `.ics` export
 16. Quick add parser + tests
@@ -144,3 +144,9 @@ Out of scope: XP/skill levels, AI, multi-device sync, push notifications.
 - A `LogEntry` linked to a goal counts toward it WITHOUT becoming a session (no time slot): `loggedMinutes` is added in the planner's `committedMinutes` (deadline remaining, ongoing per-day/week) and in progress (deadline done, streaks, weekly history, total); for recurring goals an entry with minutes counts as one session that week and its day needs rest after. `PlanState.logs`; logs are a plan input (signature + `loadPlanState`). Adding an entry with pages to a book goal moves `pagesDone` (via `logPages`) — editing/deleting doesn't revert pages.
 - Check-in: one per day (`checkIns` keyed by date). `shouldPromptCheckIn`: Today shows "How was today?" once the last non-travel item of the day ended (or from 20:00 with nothing planned); "Not now" sets meta `checkInDismissed:<date>`. Also on the Log screen.
 - Backlog: `finishBacklogItem` → status finished + rating + note and a `LogEntry` ("watched"/"read", note "★★★★☆ — …"). Books in Want to read: "Make it a book goal" → `/goals/new?template=book&name=…` (GoalEditScreen reads `name`) and the item goes in progress. Links must be http(s) and open with `rel="noopener noreferrer"`.
+
+## Learning (src/domain/learning.ts, src/screens/learning)
+
+- Derived on the fly from the last 28 days (the `Stats` table stays unused — a cache could go stale). `credit`: done 1, partial actual/planned, skipped/missed 0. `completionByBucket` per goal per morning/afternoon/evening; planner adds `bucketBonus` = (bucket rate − goal's overall rate) × 4, clamped ±2, only with ≥ 3 attempts in the bucket and ≥ 6 overall.
+- Suggestions (user confirms; dismissals in meta `dismissedSuggestions` by key): `energySuggestions` groups windows by start/end/energy (e.g. Sat+Sun → "on weekends"), needs ≥ 14 days of history and ≥ 4 sessions; ≥ 85% done → high (unless check-ins avg < 3), high with ≤ 45% → normal, ≤ 30% and check-ins ≤ 2 → low. `sessionLengthSuggestions`: ≥ 5 recent sessions with real minutes, median ratio ≤ 0.75 or ≥ 1.25 → `applySessionLength`. `estimateHint` (new deadline goals): finished same-category deadline goals' actual/planned (sessions + logs), shown when off by ≥ 15%; once used or kept it stays hidden for that form (it would otherwise re-multiply).
+- UI: `SuggestionsCard` on Today (below the timeline) and on the goal page (session length for that goal); `EstimateHintCard` under the deadline hours in the new-goal form. Applying changes plan inputs → re-plan happens by itself.
